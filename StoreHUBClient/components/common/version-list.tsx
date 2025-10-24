@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs } from "@/components/common/tabs";
 import { PreviewIframe } from "@/components/common/preview-iframe";
 import { Markdown } from "@/components/common/markdown";
@@ -27,6 +28,59 @@ function toISODate(dateStr?: string) {
   });
 }
 
+// Main component that shows latest version with a selector for other versions
+export function VersionsDisplay({
+  slug,
+  versions,
+}: {
+  slug: string;
+  versions: VersionDoc[];
+}) {
+  const [selectedVersion, setSelectedVersion] = useState<string>(versions[0]?.version || "");
+  
+  if (!versions || versions.length === 0) {
+    return (
+      <div className="p-8 border-2 border-black dark:border-white bg-white dark:bg-black text-center">
+        <span className="text-6xl mb-4 block">📦</span>
+        <p className="font-black uppercase text-lg">No versions yet.</p>
+      </div>
+    );
+  }
+
+  // Find the selected version data
+  const currentVersion = versions.find(v => v.version === selectedVersion) || versions[0];
+  const hasMultipleVersions = versions.length > 1;
+
+  return (
+    <div className="space-y-6">
+      {/* Version Selector */}
+      {hasMultipleVersions && (
+        <div className="flex items-center gap-4 p-4 border-2 border-black dark:border-white bg-white dark:bg-black">
+          <label htmlFor="version-select" className="font-black uppercase text-sm tracking-wide flex items-center gap-2">
+            <span className="text-2xl">🏷️</span>
+            <span>Select Version:</span>
+          </label>
+          <select
+            id="version-select"
+            value={selectedVersion}
+            onChange={(e) => setSelectedVersion(e.target.value)}
+            className="flex-1 max-w-xs px-4 py-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white font-bold uppercase text-sm tracking-wide cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+          >
+            {versions.map((v, index) => (
+              <option key={v.version} value={v.version}>
+                {v.version} {index === 0 ? "(Latest)" : ""} {v.changelog ? `- ${v.changelog}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      
+      {/* Show single version */}
+      <VersionsList slug={slug} versions={[currentVersion]} />
+    </div>
+  );
+}
+
 export function VersionsList({
   slug,
   versions,
@@ -35,12 +89,7 @@ export function VersionsList({
   versions: VersionDoc[];
 }) {
   if (!versions || versions.length === 0) {
-    return (
-      <div className="p-8 border-2 border-black dark:border-white bg-white dark:bg-black text-center">
-        <span className="text-6xl mb-4 block">📦</span>
-        <p className="font-black uppercase text-lg">No versions yet.</p>
-      </div>
-    );
+    return null;
   }
   console.log("Rendering VersionsList for", slug, versions);
 

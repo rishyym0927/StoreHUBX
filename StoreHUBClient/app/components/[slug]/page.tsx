@@ -79,15 +79,25 @@ export default async function ComponentDetail({
                 <div className="font-black text-sm">{createdDate}</div>
               </div>
             </div>
-            {comp.repoLink && (
-              <div className="flex items-center gap-3 p-4 border-1 border-green-600 bg-white dark:bg-black">
-                <span className="text-3xl">✅</span>
-                <div>
-                  <div className="text-xs font-black uppercase text-green-600">Status</div>
-                  <div className="font-black text-sm text-green-600">GitHub Linked</div>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-3 p-4 border-1 border-black dark:border-white bg-white dark:bg-black">
+              {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo ? (
+                <>
+                  <span className="text-3xl">✅</span>
+                  <div>
+                    <div className="text-xs font-black uppercase text-green-600">Status</div>
+                    <div className="font-black text-sm text-green-600">GitHub Linked</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-3xl">❌</span>
+                  <div>
+                    <div className="text-xs font-black uppercase text-red-600">Status</div>
+                    <div className="font-black text-sm text-red-600">Not Linked</div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </section>

@@ -63,14 +63,16 @@ check_prerequisites() {
         print_success "Docker is installed"
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
-        if ! docker compose version &> /dev/null; then
-            missing_tools+=("docker-compose")
-        else
-            print_success "Docker Compose is installed"
-        fi
+    # Check for docker compose (newer) or docker-compose (legacy)
+    if docker compose version &> /dev/null; then
+        print_success "Docker Compose is installed (modern version)"
+        DOCKER_COMPOSE_CMD="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        print_success "Docker Compose is installed (legacy version)"
+        DOCKER_COMPOSE_CMD="docker-compose"
     else
-        print_success "Docker Compose is installed"
+        missing_tools+=("docker-compose")
+        DOCKER_COMPOSE_CMD="docker compose"
     fi
     
     if [ ${#missing_tools[@]} -ne 0 ]; then
@@ -166,20 +168,21 @@ start_docker_services() {
     
     cd StoreHUBXBackend
     
-    print_info "Starting MinIO..."
-    docker-compose up -d
+    print_info "Starting MinIO with $DOCKER_COMPOSE_CMD..."
+    $DOCKER_COMPOSE_CMD up -d
     
     # Wait for services to be ready
-    sleep 3
+    print_info "Waiting for services to start..."
+    sleep 5
     
-    if docker-compose ps | grep -q "Up"; then
+    if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         print_success "Docker services started"
         print_info "MinIO Console: http://localhost:9001"
         print_info "MinIO Credentials: minioadmin / minioadmin"
     else
-        print_error "Failed to start Docker services"
-        docker-compose logs
-        exit 1
+        print_warning "Could not verify service status, checking logs..."
+        $DOCKER_COMPOSE_CMD logs --tail=20
+        print_warning "If services are running, you can continue. Otherwise, check the logs above."
     fi
     
     cd ..
