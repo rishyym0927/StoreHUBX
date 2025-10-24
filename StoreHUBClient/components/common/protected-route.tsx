@@ -17,8 +17,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) {
     return (
-      <div className="py-20 text-center opacity-70 text-sm">
-        Loading user session...
+      <div className="py-24 text-center text-base font-mono opacity-70">
+        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <div>Loading user session...</div>
       </div>
     );
   }

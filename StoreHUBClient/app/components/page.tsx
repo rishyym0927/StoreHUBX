@@ -46,6 +46,9 @@ export default function ComponentsPage() {
 
   const hasActiveFilters = searchQuery || frameworkFilter || tagsFilter;
 
+  // TODO: Replace with actual logged-in user ID from auth context
+  const loggedInUserId = "user-id-placeholder";
+
   return (
     <div className="space-y-6">
       <section>
@@ -276,6 +279,19 @@ export default function ComponentsPage() {
                         </svg>
                         <span>Created {formatDate(c.createdAt)}</span>
                       </div>
+                    </>
+                  )}
+
+                  {/* Owner-only actions: Link Repo & Add Version */}
+                  {loggedInUserId === c.ownerId && (
+                    <>
+                      <span className="opacity-50">•</span>
+                      <button className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition">
+                        Link Repo
+                      </button>
+                      <button className="px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition">
+                        Add Version
+                      </button>
                     </>
                   )}
 
