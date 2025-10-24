@@ -1,0 +1,701 @@
+basePath: /
+host: localhost:8080
+info:
+  contact: {}
+  description: API documentation for StoreHUBX backend.
+  title: StoreHUBX API
+  version: "1.0"
+securityDefinitions:
+  JWT:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: Use format 'Bearer {token}'
+schemes:
+- http
+swagger: "2.0"
+paths:
+  /auth/github/login:
+    get:
+      summary: GitHub OAuth Login
+      description: Redirects the user to GitHub for authentication
+      tags:
+        - Auth
+      responses:
+        302:
+          description: Redirects to GitHub OAuth page
+
+  /auth/github/callback:
+    get:
+      summary: GitHub OAuth Callback
+      description: Handles the OAuth callback from GitHub
+      tags:
+        - Auth
+      responses:
+        200:
+          description: JWT token for API access
+
+  /health:
+    get:
+      summary: Check Service Health
+      description: Simple health check endpoint
+      tags:
+        - Health
+      responses:
+        200:
+          description: Health status
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+
+  /components:
+    get:
+      summary: Get All Components
+      description: Retrieves a paginated list of components with filtering options
+      tags:
+        - Components
+      parameters:
+        - in: query
+          name: q
+          type: string
+          description: Search term for component name, description, or tags
+        - in: query
+          name: framework
+          type: string
+          description: Filter by framework (e.g., "react", "vue")
+        - in: query
+          name: tags
+          type: string
+          description: Filter by comma-separated tags (e.g., "ui,button")
+        - in: query
+          name: page
+          type: integer
+          description: Page number (default: 1)
+        - in: query
+          name: limit
+          type: integer
+          description: Items per page (default: 10, max: 100)
+      responses:
+        200:
+          description: List of components
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total:
+                    type: integer
+                  components:
+                    type: array
+                    items:
+                      $ref: "#/definitions/Component"
+                      
+  /components/{slug}:
+    get:
+      summary: Get Component by Slug
+      description: Retrieves detailed information about a specific component
+      tags:
+        - Components
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+      responses:
+        200:
+          description: Component details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  component:
+                    $ref: "#/definitions/Component"
+        404:
+          description: Component not found
+          
+  /api/components:
+    post:
+      summary: Create Component
+      description: Creates a new component
+      tags:
+        - Components
+      security:
+        - JWT: []
+      parameters:
+        - in: body
+          name: component
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+              frameworks:
+                type: array
+                items:
+                  type: string
+              tags:
+                type: array
+                items:
+                  type: string
+              license:
+                type: string
+            required:
+              - name
+              - frameworks
+      responses:
+        200:
+          description: Created component
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  component:
+                    $ref: "#/definitions/Component"
+        400:
+          description: Invalid input
+  
+  /api/components/{slug}/link:
+    post:
+      summary: Link Component to GitHub Repository
+      description: Links a component to a GitHub repository
+      tags:
+        - Components
+      security:
+        - JWT: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+        - in: body
+          name: repoLink
+          required: true
+          schema:
+            type: object
+            properties:
+              owner:
+                type: string
+              repo:
+                type: string
+              path:
+                type: string
+              ref:
+                type: string
+              commit:
+                type: string
+            required:
+              - owner
+              - repo
+      responses:
+        200:
+          description: Updated component
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  component:
+                    $ref: "#/definitions/Component"
+        400:
+          description: Invalid input
+        404:
+          description: Component not found
+
+  /components/{slug}/versions:
+    get:
+      summary: Get Component Versions
+      description: Retrieves all versions for a specific component
+      tags:
+        - Versions
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+      responses:
+        200:
+          description: List of versions
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: "#/definitions/ComponentVersion"
+        404:
+          description: Component not found
+
+  /api/components/{slug}/versions:
+    post:
+      summary: Add Component Version
+      description: Adds a new version to an existing component
+      tags:
+        - Versions
+      security:
+        - JWT: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+        - in: body
+          name: version
+          required: true
+          schema:
+            type: object
+            properties:
+              version:
+                type: string
+              changelog:
+                type: string
+              readme:
+                type: string
+              codeUrl:
+                type: string
+            required:
+              - version
+      responses:
+        200:
+          description: Created version
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  version:
+                    $ref: "#/definitions/ComponentVersion"
+        400:
+          description: Invalid input
+        404:
+          description: Component not found
+
+  /api/github/repos:
+    get:
+      summary: List User's GitHub Repositories
+      description: Lists repositories accessible to the authenticated user
+      tags:
+        - GitHub Integration
+      security:
+        - JWT: []
+      parameters:
+        - in: query
+          name: page
+          type: integer
+          description: Page number (default 1)
+        - in: query
+          name: per_page
+          type: integer
+          description: Items per page (default 30)
+        - in: query
+          name: visibility
+          type: string
+          description: Filter by visibility (all/public/private)
+        - in: query
+          name: affiliation
+          type: string
+          description: Comma-separated list of values (owner,collaborator,organization_member)
+      responses:
+        200:
+          description: List of repositories
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: array
+                items:
+                  type: object
+        401:
+          description: Unauthorized
+
+  /api/github/contents:
+    get:
+      summary: Get Repository Contents
+      description: Retrieves files and directories in a repository path
+      tags:
+        - GitHub Integration
+      security:
+        - JWT: []
+      parameters:
+        - in: query
+          name: owner
+          required: true
+          type: string
+          description: Repository owner
+        - in: query
+          name: repo
+          required: true
+          type: string
+          description: Repository name
+        - in: query
+          name: path
+          type: string
+          description: Path within the repository (default root)
+        - in: query
+          name: ref
+          type: string
+          description: Branch, tag, or commit SHA
+      responses:
+        200:
+          description: Repository contents
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: array
+                items:
+                  type: object
+        400:
+          description: Invalid input
+        401:
+          description: Unauthorized
+
+  /api/github/branches:
+    get:
+      summary: Get Branch Information
+      description: Retrieves information about a specific branch
+      tags:
+        - GitHub Integration
+      security:
+        - JWT: []
+      parameters:
+        - in: query
+          name: owner
+          required: true
+          type: string
+          description: Repository owner
+        - in: query
+          name: repo
+          required: true
+          type: string
+          description: Repository name
+        - in: query
+          name: branch
+          type: string
+          description: Branch name (default main)
+      responses:
+        200:
+          description: Branch information
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+        400:
+          description: Invalid input
+        401:
+          description: Unauthorized
+
+  /api/components/{slug}/versions/{version}/build:
+    post:
+      summary: Enqueue Component Build
+      description: Enqueues a build job for a specific component version
+      tags:
+        - Builds
+      security:
+        - JWT: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+        - in: path
+          name: version
+          required: true
+          type: string
+          description: The version string (e.g., "1.0.0")
+      responses:
+        200:
+          description: Build job created
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  status:
+                    type: string
+        400:
+          description: Invalid input
+        404:
+          description: Component or version not found
+
+  /api/builds/{id}:
+    get:
+      summary: Get Build Status
+      description: Retrieves details about a specific build job
+      tags:
+        - Builds
+      security:
+        - JWT: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+          description: The build job ID
+      responses:
+        200:
+          description: Build job details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  build:
+                    $ref: "#/definitions/BuildJob"
+        400:
+          description: Invalid ID
+        404:
+          description: Build not found
+
+  /api/components/{slug}/versions/{version}/builds:
+    get:
+      summary: List Builds for Version
+      description: Lists all build jobs for a specific component version
+      tags:
+        - Builds
+      security:
+        - JWT: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          type: string
+          description: The unique slug identifier for the component
+        - in: path
+          name: version
+          required: true
+          type: string
+          description: The version string (e.g., "1.0.0")
+      responses:
+        200:
+          description: List of build jobs
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  builds:
+                    type: array
+                    items:
+                      $ref: "#/definitions/BuildJob"
+        400:
+          description: Invalid input
+
+  /api/me:
+    get:
+      summary: Get User Profile
+      description: Retrieves the profile of the authenticated user
+      tags:
+        - User
+      security:
+        - JWT: []
+      responses:
+        200:
+          description: User profile
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: string
+              email:
+                type: string
+              status:
+                type: string
+        401:
+          description: Unauthorized
+
+definitions:
+  Component:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      description:
+        type: string
+      frameworks:
+        type: array
+        items:
+          type: string
+      tags:
+        type: array
+        items:
+          type: string
+      license:
+        type: string
+      ownerId:
+        type: string
+      repoLink:
+        $ref: "#/definitions/RepoLink"
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+        
+  RepoLink:
+    type: object
+    properties:
+      owner:
+        type: string
+      repo:
+        type: string
+      path:
+        type: string
+      ref:
+        type: string
+      commit:
+        type: string
+        
+  ComponentVersion:
+    type: object
+    properties:
+      id:
+        type: string
+      componentId:
+        type: string
+      version:
+        type: string
+      changelog:
+        type: string
+      readme:
+        type: string
+      codeUrl:
+        type: string
+      previewUrl:
+        type: string
+      buildState:
+        type: string
+        enum:
+          - none
+          - queued
+          - running
+          - ready
+          - error
+      createdBy:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+        
+  BuildJob:
+    type: object
+    properties:
+      id:
+        type: string
+      componentId:
+        type: string
+      component:
+        type: string
+      version:
+        type: string
+      status:
+        type: string
+        enum:
+          - queued
+          - running
+          - success
+          - error
+      ownerId:
+        type: string
+      repo:
+        $ref: "#/definitions/BuildRepo"
+      artifacts:
+        $ref: "#/definitions/BuildArtifact"
+      logs:
+        type: array
+        items:
+          type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      startedAt:
+        type: string
+        format: date-time
+      endedAt:
+        type: string
+        format: date-time
+        
+  BuildRepo:
+    type: object
+    properties:
+      owner:
+        type: string
+      repo:
+        type: string
+      path:
+        type: string
+      ref:
+        type: string
+      commit:
+        type: string
+        
+  BuildArtifact:
+    type: object
+    properties:
+      bundleUrl:
+        type: string

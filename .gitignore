@@ -1,0 +1,161 @@
+# Operating Systems
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Go (Backend)
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# Build artifacts
+StoreHUBXBackend/bin/
+StoreHUBXBackend/tmp/
+**/bin/
+**/tmp/
+
+# Node.js / Next.js (Frontend)
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment variables
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+.env.local
+*.env
+!.env.example
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# Logs
+logs
+*.log
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Misc
+.cache/
+.temp/
+.tmp/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+
+# Air (Go live reload)
+tmp/
+.air.toml
+
+# Swagger/API Documentation (generated files)
+# Uncomment if you want to ignore generated swagger docs
+# **/docs/swagger.json
+# **/docs/swagger.yaml
+# **/docs/docs.go
+
+# MinIO / S3 local data
+minio-data/
+s3-data/
+
+# MongoDB data
+mongo-data/
+mongodb-data/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Linux
+.directory
+.Trash-*
+
+# Windows
+desktop.ini
+$RECYCLE.BIN/
+
+# Go sum security
+# go.sum is typically committed, but if you need to ignore:
+# go.sum
+
+# Coverage reports
+coverage.txt
+coverage.html
+
+# Profiling data
+*.prof
+*.pprof
+
+# Air tmp directory
+**/.air/

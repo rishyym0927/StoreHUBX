@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Tailwind v4: class-based dark mode variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Theme tokens - Black & White Design System */
+@theme {
+  --color-bg:        255 255 255;  /* pure white */
+  --color-bg-dark:   0 0 0;        /* pure black */
+  --color-fg:        0 0 0;        /* pure black */
+  --color-fg-dark:   255 255 255;  /* pure white */
+  --radius-xl:       0;            /* sharp corners for brutalist design */
+}
+
+:root { 
+  color-scheme: light;
+}
+
+.dark { 
+  color-scheme: dark;
+}
+
+html, body { 
+  height: 100%;
+  font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'Courier New', monospace;
+}
+
+/* Scrollbar styling for black/white theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: white;
+  border: 1px solid black;
+}
+
+::-webkit-scrollbar-thumb {
+  background: black;
+  border: 1px solid black;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: black;
+  border: 1px solid white;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: white;
+  border: 1px solid white;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}
+
+/* Selection styling */
+::selection {
+  background: black;
+  color: white;
+}
+
+.dark ::selection {
+  background: white;
+  color: black;
+}
