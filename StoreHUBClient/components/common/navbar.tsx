@@ -33,7 +33,7 @@ export function Navbar() {
           {token && (
             <Link 
               href="/components/new" 
-              className="text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95"
+              className="text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5 bg-white text-black dark:bg-black dark:text-white transition-transform hover:scale-105 active:scale-95"
             >
               + New
             </Link>

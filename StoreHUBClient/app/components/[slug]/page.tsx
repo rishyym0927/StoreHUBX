@@ -3,6 +3,8 @@ import { componentApi, versionApi } from "@/lib/api";
 import { formatDate } from "@/lib/api-utils";
 import { VersionsDisplay } from "@/components/common/version-list";
 import { AutoDeploy } from "@/components/common/auto-deploy";
+import { OwnerActions } from "@/components/common/owner-actions";
+
 import type { Component, ComponentVersion } from "@/types";
 
 export default async function ComponentDetail({
@@ -11,8 +13,27 @@ export default async function ComponentDetail({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const comp = await componentApi.get(slug);
-  const versions = await versionApi.list(slug);
+  
+  // Fetch component data with error handling
+  let comp: Component;
+  let versions: ComponentVersion[] = [];
+  
+  try {
+    comp = await componentApi.get(slug);
+    console.log("Fetched component:", comp);
+  } catch (error) {
+    console.error("Failed to fetch component:", error);
+    throw error; // Let Next.js error boundary handle it
+  }
+
+  try {
+    const fetchedVersions = await versionApi.list(slug);
+    versions = fetchedVersions || [];
+  } catch (error) {
+    console.error("Failed to fetch versions:", error);
+    // Continue with empty versions array instead of crashing
+    versions = [];
+  }
 
   // Format creation date consistently (server-safe)
   const createdDate = comp.createdAt 
@@ -101,15 +122,8 @@ export default async function ComponentDetail({
               </div>
             )}
 
-            {/* Action Button */}
-            <div>
-              <a
-                href={`/components/${slug}/import`}
-                className="block w-full text-center border-2 border-black dark:border-white px-4 py-3 text-sm font-mono transition-transform hover:scale-105 active:scale-95"
-              >
-                {comp.repoLink?.owner ? "Change Repository" : "Link GitHub"}
-              </a>
-            </div>
+            {/* Owner Actions */}
+        
           </div>
 
           {/* Right Column - Preview and Versions */}
@@ -117,7 +131,7 @@ export default async function ComponentDetail({
             {/* Auto-Deploy Section (only for linked repos) */}
             {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
               <section>
-                <AutoDeploy component={comp} versions={versions ?? []} />
+                <AutoDeploy component={comp} versions={versions} />
               </section>
             )}
 
@@ -129,13 +143,13 @@ export default async function ComponentDetail({
                     Versions
                   </h2>
                   <p className="text-xs font-mono text-black/60 dark:text-white/60">
-                    {versions && versions.length > 0 ? `${versions.length} version${versions.length > 1 ? 's' : ''} available` : 'No versions yet'}
+                    {versions.length > 0 ? `${versions.length} version${versions.length > 1 ? 's' : ''} available` : 'No versions yet'}
                   </p>
                 </div>
               </div>
 
               {/* Versions Display */}
-              <VersionsDisplay slug={slug} versions={versions ?? []} />
+              <VersionsDisplay slug={slug} versions={versions} />
             </section>
           </div>
         </div>

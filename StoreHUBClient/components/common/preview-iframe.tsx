@@ -71,7 +71,8 @@ export function PreviewIframe({ url, height = 520 }: Props) {
 
   if (!src) {
     return (
-      <div className="p-4 border border-black dark:border-white">
+      <div className="border-2 border-black dark:border-white p-8 text-center bg-black/5 dark:bg-white/5">
+        <div className="text-4xl mb-3">🖼️</div>
         <p className="font-mono text-sm text-black/60 dark:text-white/60">
           No preview URL provided
         </p>
@@ -80,44 +81,66 @@ export function PreviewIframe({ url, height = 520 }: Props) {
   }
 
   return (
-    <div className="border border-black dark:border-white overflow-hidden">
-      <div className="bg-black dark:bg-white px-3 py-2 text-xs font-mono border-b border-black dark:border-white flex items-center justify-between">
-        <span className="truncate flex-1 text-white dark:text-black">
-          {isLoading ? 'Loading preview...' : 'Live Preview'}
-        </span>
-        {loadError && <span className="text-red-400 dark:text-red-600 ml-2">Error</span>}
-        <a 
-          href={src} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="ml-2 px-2 py-1 text-xs border border-white dark:border-black text-white dark:text-black hover:bg-white hover:text-black dark:hover:bg-black dark:hover:text-white transition"
-        >
-          Open ↗
-        </a>
+    <div className="border-2 border-black dark:border-white overflow-hidden bg-white dark:bg-black">
+      {/* Enhanced Preview Header */}
+      <div className="bg-black dark:bg-white px-4 py-3 border-b-2 border-black dark:border-white flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+          </div>
+          <span className="truncate text-xs font-mono text-white dark:text-black">
+            {isLoading ? '⏳ Loading preview...' : '✨ Live Preview'}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {loadError && (
+            <span className="text-xs font-mono text-red-400 dark:text-red-600">
+              ⚠️ Error
+            </span>
+          )}
+          <a 
+            href={src} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-3 py-1 text-xs font-mono border-2 border-white dark:border-black text-white dark:text-black hover:bg-white hover:text-black dark:hover:bg-black dark:hover:text-white transition-all"
+          >
+            Open in New Tab ↗
+          </a>
+        </div>
       </div>
       
       {loadError && (
-        <div className="p-4 border-b border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 text-sm">
-          <p className="font-mono font-bold text-red-600 dark:text-red-400">Failed to load preview</p>
-          <p className="mt-1 text-xs font-mono text-red-600 dark:text-red-400">{loadError}</p>
+        <div className="p-6 border-b-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
+          <p className="font-mono font-bold text-red-600 dark:text-red-400 mb-2">
+            ⚠️ Preview Failed to Load
+          </p>
+          <p className="text-xs font-mono text-red-600 dark:text-red-400 mb-3">
+            {loadError}
+          </p>
+          <p className="text-xs font-mono text-red-600/70 dark:text-red-400/70">
+            This could be due to CORS restrictions, an invalid URL, or the preview server being unavailable.
+          </p>
         </div>
       )}
       
-      {/* Warning about MIME type issues */}
-      <div className="px-3 py-2 border-b border-black dark:border-white text-xs">
-        <p className="font-mono text-black/70 dark:text-white/70">
-          💡 If the preview appears blank, check your browser console for MIME type errors.
-        </p>
-      </div>
-      
-      <div className="relative" style={{ minHeight: height }}>
+      <div className="relative bg-white dark:bg-gray-950" style={{ minHeight: height }}>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-black/90 z-10">
+            <div className="text-center">
+              <div className="inline-block w-10 h-10 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-xs font-mono text-black/60 dark:text-white/60">Loading preview...</p>
+            </div>
+          </div>
+        )}
+        
         <iframe
           title="Live Preview"
           src={src}
-          className="w-full border-0"
+          className="w-full border-0 bg-white"
           style={{ height, display: 'block' }}
-          // NOTE: Allow list is generous for dev tools like CodeSandbox/StackBlitz.
-          // If you need stronger isolation, remove allow-same-origin (but some embeds may break).
           sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin"
           allow="clipboard-read; clipboard-write; geolocation; microphone; camera; web-share; payment"
           onLoad={() => {
@@ -125,7 +148,8 @@ export function PreviewIframe({ url, height = 520 }: Props) {
           }}
           onError={(e) => {
             console.error("❌ Iframe failed to load:", src, e);
-            setLoadError("Iframe failed to load");
+            setLoadError("Iframe failed to load - the preview URL may be invalid or blocked by CORS");
+            setIsLoading(false);
           }}
         />
       </div>

@@ -13,6 +13,7 @@ interface AutoDeployProps {
 
 export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployProps) {
   const token = useAuth((s) => s.token);
+  const user = useAuth((s) => s.user);
   const [checking, setChecking] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [latestCommit, setLatestCommit] = useState<string | null>(null);
@@ -22,6 +23,13 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
 
   // Check if component is linked to a repo
   const isLinked = component.repoLink && component.repoLink.owner && component.repoLink.repo;
+  
+  // Check if current user is the owner
+  const isOwner = user && token ;
+
+  // Don't show auto-deploy if not owner
+
+  console.log("Rendering AutoDeploy for component:", component.slug);
 
   // Check for new commits
   const checkForNewCommits = async () => {
@@ -97,10 +105,6 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
       setDeploying(false);
     }
   };
-
-  if (!isLinked) {
-    return null;
-  }
 
   return (
     <div className="border border-black dark:border-white p-6">

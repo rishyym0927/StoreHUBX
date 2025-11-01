@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 
 import { ProtectedRoute } from "@/components/common/protected-route";
+import { OwnershipGuard } from "@/components/common/ownership-guard";
 import { useAuth } from "@/lib/store";
 import { versionApi, buildApi, componentApi } from "@/lib/api";
 import { useMutation, useComponent } from "@/hooks/use-api";
@@ -100,7 +101,8 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
 
   return (
     <ProtectedRoute>
-      <div className="max-w-xl space-y-6">
+      <OwnershipGuard slug={slug}>
+        <div className="max-w-xl space-y-6">
         {!showBuildStatus ? (
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
@@ -222,6 +224,7 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
           </div>
         )}
       </div>
+      </OwnershipGuard>
     </ProtectedRoute>
   );
 }
