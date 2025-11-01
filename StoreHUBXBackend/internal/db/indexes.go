@@ -26,6 +26,12 @@ func EnsureIndexes(client *mongo.Client) error {
 		Options: nil,
 	})
 
+	// component_versions: componentId + commitSha unique (prevent duplicate commits)
+	_, _ = db.Collection("component_versions").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "commitSha", Value: 1}},
+		Options: nil,
+	})
+
 	// build_jobs: filter by component/version/status
 	_, _ = db.Collection("build_jobs").Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{Keys: bson.D{{Key: "component", Value: 1}}},

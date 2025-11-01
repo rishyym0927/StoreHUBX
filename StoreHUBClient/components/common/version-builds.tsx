@@ -21,10 +21,10 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
 
   if (loading) {
     return (
-      <div className="p-6 border-4 border-black dark:border-white bg-white dark:bg-black">
-        <div className="flex items-center gap-3 font-black">
-          <div className="w-6 h-6 border-4 border-black dark:border-white border-t-transparent animate-spin" />
-          <span className="uppercase tracking-wide">Loading builds...</span>
+      <div className="p-6 border border-black dark:border-white">
+        <div className="flex items-center gap-3 font-mono text-sm">
+          <div className="w-4 h-4 border-2 border-black dark:border-white border-t-transparent animate-spin" />
+          <span>Loading builds...</span>
         </div>
       </div>
     );
@@ -32,20 +32,16 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
 
   if (error) {
     return (
-      <div className="p-6 border-4 border-red-600 bg-white dark:bg-black">
-        <div className="flex items-center gap-3">
-          <span className="text-4xl">⚠️</span>
-          <p className="font-black text-red-600 uppercase">{error}</p>
-        </div>
+      <div className="p-6 border border-red-600 dark:border-red-400">
+        <p className="font-mono text-sm text-red-600 dark:text-red-400">⚠️ {error}</p>
       </div>
     );
   }
 
   if (!builds || builds.length === 0) {
     return (
-      <div className="p-6 border-4 border-black dark:border-white bg-white dark:bg-black text-center">
-        <span className="text-5xl mb-3 block">📦</span>
-        <p className="font-black uppercase">No builds yet</p>
+      <div className="p-6 border border-black dark:border-white text-center">
+        <p className="font-mono text-sm text-black/60 dark:text-white/60">No builds yet</p>
       </div>
     );
   }
@@ -113,41 +109,28 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between pb-4 border-b-2 border-black dark:border-white">
-        <h4 className="font-black uppercase tracking-wide">Build History ({builds.length})</h4>
+      <div className="flex items-center justify-between pb-3 border-b border-black dark:border-white">
+        <h4 className="font-mono text-sm font-bold">Build History ({builds.length})</h4>
         {token && (
           <button
             onClick={handleRebuild}
             disabled={rebuilding}
-            className="px-4 py-2.5 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white disabled:opacity-50 font-black uppercase text-xs tracking-wide transition-transform duration-200 hover:scale-105 flex items-center gap-2 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 border-2 border-black dark:border-white text-xs font-mono disabled:opacity-50 transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed"
             title="Trigger a new build"
           >
-            {rebuilding ? (
-              <>
-                <div className="w-4 h-4 border-2 border-current border-t-transparent animate-spin" />
-                <span>Building...</span>
-              </>
-            ) : (
-              <>
-                <span className="text-lg">🔄</span>
-                <span>Rebuild</span>
-              </>
-            )}
+            {rebuilding ? "Building..." : "Rebuild"}
           </button>
         )}
       </div>
 
       {/* Rebuild Error Message */}
       {rebuildError && (
-        <div className="border-4 border-red-600 bg-white dark:bg-black p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">⚠️</span>
-            <p className="font-black text-red-600 uppercase text-sm">{rebuildError}</p>
-          </div>
+        <div className="border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 p-3">
+          <p className="font-mono text-xs text-red-600 dark:text-red-400">⚠️ {rebuildError}</p>
         </div>
       )}
       
-      <div className="space-y-4">
+      <div className="space-y-3">
         {builds.map((build) => {
           const statusConfig = getStatusConfig(build.status);
           const isExpanded = expandedBuildId === build.id;
@@ -155,28 +138,27 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
           return (
             <div
               key={build.id}
-              className={`border-4 ${statusConfig.border} bg-white dark:bg-black overflow-hidden transition-all`}
+              className={`border ${statusConfig.border}`}
             >
               {/* Build Header - Clickable */}
               <button
                 onClick={() => toggleBuildExpansion(build.id)}
-                className="w-full p-4 text-left hover:opacity-80 transition-opacity"
+                className="w-full p-3 text-left hover:opacity-80 transition-opacity"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{statusConfig.icon}</span>
-                    <span className={`font-black uppercase tracking-wide ${statusConfig.color}`}>
+                    <span className={`font-mono text-sm font-bold ${statusConfig.color}`}>
                       {statusConfig.label}
                     </span>
-                    <span className="text-xs font-mono font-bold opacity-60">
+                    <span className="text-xs font-mono text-black/60 dark:text-white/60">
                       #{build.id.slice(0, 8)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs font-black opacity-70 uppercase">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-black/60 dark:text-white/60">
                       {formatRelativeTime(build.createdAt)}
                     </span>
-                    <span className="text-xl font-black">
+                    <span className="text-sm">
                       {isExpanded ? "▼" : "▶"}
                     </span>
                   </div>
@@ -185,55 +167,52 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
 
               {/* Expanded Build Details */}
               {isExpanded && (
-                <div className="border-t-4 border-current p-4 space-y-4">
+                <div className="border-t border-current p-3 space-y-3">
                   {/* Build Info */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     {build.repo && (
                       <>
-                        <div className="border-2 border-black dark:border-white p-3">
-                          <p className="font-black uppercase text-xs opacity-60 mb-1">Repository</p>
+                        <div className="border border-black dark:border-white p-2">
+                          <p className="font-mono text-black/60 dark:text-white/60 mb-1">Repository</p>
                           <p className="font-mono font-bold">{build.repo.owner}/{build.repo.repo}</p>
                         </div>
-                        <div className="border-2 border-black dark:border-white p-3">
-                          <p className="font-black uppercase text-xs opacity-60 mb-1">Branch/Ref</p>
+                        <div className="border border-black dark:border-white p-2">
+                          <p className="font-mono text-black/60 dark:text-white/60 mb-1">Branch/Ref</p>
                           <p className="font-mono font-bold">{build.repo.ref}</p>
                         </div>
                         {build.repo.commit && (
-                          <div className="border-2 border-black dark:border-white p-3">
-                            <p className="font-black uppercase text-xs opacity-60 mb-1">Commit</p>
+                          <div className="border border-black dark:border-white p-2">
+                            <p className="font-mono text-black/60 dark:text-white/60 mb-1">Commit</p>
                             <p className="font-mono font-bold">{build.repo.commit.slice(0, 7)}</p>
                           </div>
                         )}
                         {build.repo.path && (
-                          <div className="border-2 border-black dark:border-white p-3">
-                            <p className="font-black uppercase text-xs opacity-60 mb-1">Path</p>
+                          <div className="border border-black dark:border-white p-2">
+                            <p className="font-mono text-black/60 dark:text-white/60 mb-1">Path</p>
                             <p className="font-mono font-bold">{build.repo.path}</p>
                           </div>
                         )}
                       </>
                     )}
-                    <div className="border-2 border-black dark:border-white p-3">
-                      <p className="font-black uppercase text-xs opacity-60 mb-1">Started</p>
-                      <p className="font-bold">{build.startedAt ? formatRelativeTime(build.startedAt) : "—"}</p>
+                    <div className="border border-black dark:border-white p-2">
+                      <p className="font-mono text-black/60 dark:text-white/60 mb-1">Started</p>
+                      <p className="font-mono">{build.startedAt ? formatRelativeTime(build.startedAt) : "—"}</p>
                     </div>
-                    <div className="border-2 border-black dark:border-white p-3">
-                      <p className="font-black uppercase text-xs opacity-60 mb-1">Completed</p>
-                      <p className="font-bold">{build.endedAt ? formatRelativeTime(build.endedAt) : "—"}</p>
+                    <div className="border border-black dark:border-white p-2">
+                      <p className="font-mono text-black/60 dark:text-white/60 mb-1">Completed</p>
+                      <p className="font-mono">{build.endedAt ? formatRelativeTime(build.endedAt) : "—"}</p>
                     </div>
                   </div>
 
                   {/* Artifacts */}
                   {build.artifacts?.bundleUrl && (
-                    <div className="pt-4 border-t-2 border-black dark:border-white">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">📦</span>
-                        <p className="font-black uppercase text-sm">Bundle</p>
-                      </div>
+                    <div className="pt-3 border-t border-black dark:border-white">
+                      <p className="font-mono text-xs font-bold mb-2">Bundle</p>
                       <a
                         href={build.artifacts.bundleUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-mono font-bold break-all"
+                        className="text-xs font-mono hover:underline break-all"
                       >
                         {build.artifacts.bundleUrl}
                       </a>
@@ -242,13 +221,10 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
 
                   {/* Logs */}
                   {build.logs && build.logs.length > 0 && (
-                    <div className="pt-4 border-t-2 border-black dark:border-white">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-2xl">📋</span>
-                        <p className="font-black uppercase text-sm">Build Logs</p>
-                      </div>
-                      <div className="bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white p-4 max-h-64 overflow-y-auto">
-                        <pre className="text-xs font-mono font-bold whitespace-pre-wrap">
+                    <div className="pt-3 border-t border-black dark:border-white">
+                      <p className="font-mono text-xs font-bold mb-2">Build Logs</p>
+                      <div className="bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white p-3 max-h-64 overflow-y-auto">
+                        <pre className="text-xs font-mono whitespace-pre-wrap">
                           {build.logs.join('\n')}
                         </pre>
                       </div>

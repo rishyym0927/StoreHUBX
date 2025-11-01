@@ -28,6 +28,9 @@ type ComponentVersion struct {
 	PreviewURL string     `bson:"previewUrl,omitempty" json:"previewUrl,omitempty"`
 	BuildState BuildState `bson:"buildState,omitempty" json:"buildState,omitempty"`
 
+	// Commit SHA for tracking unique commits
+	CommitSHA string `bson:"commitSha" json:"commitSha"`
+
 	CreatedBy string    `bson:"createdBy" json:"createdBy"`
 	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 }

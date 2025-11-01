@@ -71,41 +71,42 @@ export function PreviewIframe({ url, height = 520 }: Props) {
 
   if (!src) {
     return (
-      <div className="p-4 border rounded-xl opacity-70">
-        No preview URL provided.
+      <div className="p-4 border border-black dark:border-white">
+        <p className="font-mono text-sm text-black/60 dark:text-white/60">
+          No preview URL provided
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="border rounded-xl overflow-hidden bg-white dark:bg-gray-950">
-      <div className="bg-gray-100 dark:bg-gray-800 px-3 py-2 text-xs font-mono border-b flex items-center justify-between">
-        <span className="truncate flex-1 text-gray-600 dark:text-gray-400">
-          {isLoading ? '⏳ Loading preview...' : '✓ Live Preview'}
+    <div className="border border-black dark:border-white overflow-hidden">
+      <div className="bg-black dark:bg-white px-3 py-2 text-xs font-mono border-b border-black dark:border-white flex items-center justify-between">
+        <span className="truncate flex-1 text-white dark:text-black">
+          {isLoading ? 'Loading preview...' : 'Live Preview'}
         </span>
-        {loadError && <span className="text-red-600 ml-2">❌ Error</span>}
+        {loadError && <span className="text-red-400 dark:text-red-600 ml-2">Error</span>}
         <a 
           href={src} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+          className="ml-2 px-2 py-1 text-xs border border-white dark:border-black text-white dark:text-black hover:bg-white hover:text-black dark:hover:bg-black dark:hover:text-white transition"
         >
-          Open in new tab ↗
+          Open ↗
         </a>
       </div>
       
       {loadError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
-          <p className="font-semibold">Failed to load preview</p>
-          <p className="mt-1 text-xs">{loadError}</p>
+        <div className="p-4 border-b border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 text-sm">
+          <p className="font-mono font-bold text-red-600 dark:text-red-400">Failed to load preview</p>
+          <p className="mt-1 text-xs font-mono text-red-600 dark:text-red-400">{loadError}</p>
         </div>
       )}
       
       {/* Warning about MIME type issues */}
-      <div className="px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border-b text-xs">
-        <p className="text-yellow-800 dark:text-yellow-200">
-          💡 <strong>Note:</strong> If the preview appears blank, check your browser console. 
-          MIME type errors mean your backend file server needs to set correct Content-Type headers for .js, .css, and .svg files.
+      <div className="px-3 py-2 border-b border-black dark:border-white text-xs">
+        <p className="font-mono text-black/70 dark:text-white/70">
+          💡 If the preview appears blank, check your browser console for MIME type errors.
         </p>
       </div>
       

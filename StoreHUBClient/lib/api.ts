@@ -6,9 +6,11 @@ import type {
   ComponentCreateRequest,
   ComponentCreateResponse,
   ComponentLinkRequest,
+  ComponentLinkResponse,
   ComponentVersion,
   VersionCreateRequest,
   VersionCreateResponse,
+  AutoDeployRequest,
   BuildEnqueueResponse,
   BuildStatusResponse,
   BuildJob,
@@ -173,7 +175,7 @@ export const componentApi = {
    * Link component to GitHub repository (requires auth)
    */
   async link(slug: string, data: ComponentLinkRequest, authToken: string) {
-    const response = await apiFetch<{ component: Component }>(
+    const response = await apiFetch<ComponentLinkResponse>(
       `/api/components/${slug}/link`,
       {
         method: "POST",
@@ -181,7 +183,7 @@ export const componentApi = {
         authToken,
       }
     );
-    return response.component;
+    return response;
   },
 };
 
@@ -211,6 +213,25 @@ export const versionApi = {
   ) {
     const response = await apiFetch<VersionCreateResponse>(
       `/api/components/${slug}/versions`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        authToken,
+      }
+    );
+    return response;
+  },
+
+  /**
+   * Auto-deploy a new commit (requires auth)
+   */
+  async autoDeploy(slug: string, data: AutoDeployRequest, authToken: string) {
+    const response = await apiFetch<{
+      version: ComponentVersion;
+      jobId: string;
+      message: string;
+    }>(
+      `/api/components/${slug}/deploy`,
       {
         method: "POST",
         body: JSON.stringify(data),

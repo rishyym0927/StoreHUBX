@@ -47,6 +47,7 @@ export interface ComponentVersion {
   codeUrl?: string;
   previewUrl?: string;
   buildState?: BuildState;
+  commitSha: string; // Unique commit identifier
   createdBy: string;
   createdAt: string;
 }
@@ -168,17 +169,31 @@ export interface ComponentLinkRequest {
   commit?: string;
 }
 
+export interface ComponentLinkResponse {
+  component: Component;
+  initialVersion?: ComponentVersion | null;
+  message: string;
+}
+
 export interface VersionCreateRequest {
   version: string;
   changelog?: string;
   readme?: string;
   codeUrl?: string;
   previewUrl?: string;
+  commitSha?: string; // Commit SHA for the version
+}
+
+export interface AutoDeployRequest {
+  commitSha: string;
+  version?: string;   // Optional: suggest version number
+  changelog?: string; // Optional: changelog message
 }
 
 export interface VersionCreateResponse {
   status: string;
   version: ComponentVersion;
+  message?: string;
 }
 
 export interface BuildEnqueueResponse {

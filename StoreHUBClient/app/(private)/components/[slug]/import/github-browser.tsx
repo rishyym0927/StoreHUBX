@@ -131,7 +131,14 @@ const fetchBranchSha = async () => {
     
     setSubmitting(true);
     try {
-      await componentApi.link(slug, payload, token);
+      const response = await componentApi.link(slug, payload, token);
+      console.log("Link response:", response);
+      
+      // Show success message if initial version was created
+      if (response.initialVersion) {
+        alert(`✓ Repository linked successfully!\n\nInitial version ${response.initialVersion.version} has been created and build is queued.`);
+      }
+      
       window.location.href = `/components/${slug}`;
     } catch (e) {
       console.error("Link submit failed:", e);

@@ -81,32 +81,20 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
       codeUrl: codeUrl || undefined,
       previewUrl: previewUrl || undefined,
       readme: readme || undefined,
+      // Include commit SHA from component's repoLink if available
+      commitSha: component?.repoLink?.commit || undefined,
     };
 
     const result = await mutate(payload);
     
     if (result && token) {
-      // If component has a repo linked, automatically trigger a build
-      if (component?.repoLink) {
-        setShowBuildStatus(true);
-        setTriggeringBuild(true);
-        
-        try {
-          const buildResult = await buildApi.enqueue(slug, version, token);
-          setBuildId(buildResult.jobId);
-          setTriggeringBuild(false);
-        } catch (err) {
-          console.error("Failed to trigger build:", err);
-          setTriggeringBuild(false);
-          // Still show success message even if build fails
-          setTimeout(() => {
-            router.push(`/components/${slug}`);
-          }, 2000);
-        }
-      } else {
-        // No repo linked, redirect immediately
+      // Version is created, build is automatically triggered by backend
+      setShowBuildStatus(true);
+      
+      // Redirect after a short delay
+      setTimeout(() => {
         router.push(`/components/${slug}`);
-      }
+      }, 2000);
     }
   }
 
@@ -121,6 +109,11 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
               {component?.repoLink && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                   ✓ Linked to {component.repoLink.owner}/{component.repoLink.repo} - Build will be triggered automatically
+                </p>
+              )}
+              {!component?.repoLink && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  ⚠️ No repository linked. Consider linking a GitHub repo for automated builds.
                 </p>
               )}
             </div>
@@ -199,54 +192,33 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
               <h1 className="text-2xl font-semibold">Version Published! 🎉</h1>
               <p className="text-sm opacity-70 mt-1">
                 {component?.repoLink 
-                  ? "Building your component from the linked repository..."
+                  ? "Build has been automatically queued for your component."
                   : "Version created successfully"
                 }
               </p>
             </div>
 
-            {triggeringBuild && (
-              <div className="border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm opacity-70">Triggering build...</span>
-                </div>
+            <div className="border-2 border-green-200 dark:border-green-800 rounded-xl p-6 bg-green-50 dark:bg-green-900/20">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold text-green-900 dark:text-green-100">Version created successfully</span>
               </div>
-            )}
+              <p className="text-sm text-green-800 dark:text-green-200 opacity-80">
+                Your component version has been published and build job is in queue.
+              </p>
+            </div>
 
-            {buildId && !triggeringBuild && (
-              <>
-                <BuildStatus 
-                  buildId={buildId} 
-                  autoRefresh={true}
-                  onComplete={() => {
-                    setTimeout(() => {
-                      router.push(`/components/${slug}`);
-                    }, 3000);
-                  }}
-                />
-                <div className="text-center">
-                  <button
-                    onClick={() => router.push(`/components/${slug}`)}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Component Page →
-                  </button>
-                </div>
-              </>
-            )}
-
-            {!component?.repoLink && !triggeringBuild && (
-              <div className="text-center pt-4">
-                <p className="text-sm opacity-70 mb-3">Redirecting to component page...</p>
-                <button
-                  onClick={() => router.push(`/components/${slug}`)}
-                  className="px-4 py-2 rounded-xl border hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Go to Component
-                </button>
-              </div>
-            )}
+            <div className="text-center pt-4">
+              <p className="text-sm opacity-70 mb-3">Redirecting to component page...</p>
+              <button
+                onClick={() => router.push(`/components/${slug}`)}
+                className="px-4 py-2 rounded-xl border hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Go to Component
+              </button>
+            </div>
           </div>
         )}
       </div>

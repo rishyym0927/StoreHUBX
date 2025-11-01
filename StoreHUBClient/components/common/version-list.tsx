@@ -14,6 +14,7 @@ export type VersionDoc = {
   usage?: string;
   codeUrl?: string;
   previewUrl?: string | null;
+  commitSha?: string;
   createdAt: string;
 };
 
@@ -37,12 +38,14 @@ export function VersionsDisplay({
   versions: VersionDoc[];
 }) {
   const [selectedVersion, setSelectedVersion] = useState<string>(versions[0]?.version || "");
-  
+
   if (!versions || versions.length === 0) {
     return (
-      <div className="p-8 border-2 border-black dark:border-white bg-white dark:bg-black text-center">
-        <span className="text-6xl mb-4 block">📦</span>
-        <p className="font-black uppercase text-lg">No versions yet.</p>
+      <div className="p-12 border border-black dark:border-white text-center">
+        <p className="text-lg font-bold mb-2">No versions yet</p>
+        <p className="text-sm font-mono text-black/60 dark:text-white/60">
+          Add your first version to get started
+        </p>
       </div>
     );
   }
@@ -55,26 +58,27 @@ export function VersionsDisplay({
     <div className="space-y-6">
       {/* Version Selector */}
       {hasMultipleVersions && (
-        <div className="flex items-center gap-4 p-4 border-2 border-black dark:border-white bg-white dark:bg-black">
-          <label htmlFor="version-select" className="font-black uppercase text-sm tracking-wide flex items-center gap-2">
-            <span className="text-2xl">🏷️</span>
-            <span>Select Version:</span>
-          </label>
-          <select
-            id="version-select"
-            value={selectedVersion}
-            onChange={(e) => setSelectedVersion(e.target.value)}
-            className="flex-1 max-w-xs px-4 py-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white font-bold uppercase text-sm tracking-wide cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-          >
-            {versions.map((v, index) => (
-              <option key={v.version} value={v.version}>
-                {v.version} {index === 0 ? "(Latest)" : ""} {v.changelog ? `- ${v.changelog}` : ""}
-              </option>
-            ))}
-          </select>
+        <div className="border border-black dark:border-white p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label htmlFor="version-select" className="text-sm font-mono text-black/60 dark:text-white/60 whitespace-nowrap">
+              Select Version:
+            </label>
+            <select
+              id="version-select"
+              value={selectedVersion}
+              onChange={(e) => setSelectedVersion(e.target.value)}
+              className="flex-1 px-3 py-2 border-2 border-black dark:border-white bg-white dark:bg-black font-mono text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            >
+              {versions.map((v, index) => (
+                <option key={v.version} value={v.version}>
+                  {v.version} {index === 0 ? "(Latest)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
-      
+
       {/* Show single version */}
       <VersionsList slug={slug} versions={[currentVersion]} />
     </div>
@@ -91,7 +95,6 @@ export function VersionsList({
   if (!versions || versions.length === 0) {
     return null;
   }
-  console.log("Rendering VersionsList for", slug, versions);
 
   return (
     <ul className="space-y-6">
@@ -103,7 +106,6 @@ export function VersionsList({
         tabs.push({ id: "builds", label: "Builds" });
         
         // Always show Preview tab - it will use the redirect API endpoint
-        // The backend will handle redirecting to the actual preview URL
         tabs.push({ id: "preview", label: "Preview" });
         
         // Show README tab if readme exists
@@ -123,54 +125,64 @@ export function VersionsList({
         
         // Default to builds tab
         const initialTab = "builds";
-        
+
         return (
-          <li key={v.version + v.createdAt} className="border-2 border-black dark:border-white p-6 bg-white dark:bg-black">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-black dark:border-white">
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">🏷️</span>
-                <div>
-                  <div className="font-black text-2xl font-mono">{v.version}</div>
-                  {v.changelog && (
-                    <div className="font-bold text-sm opacity-70 mt-1">{v.changelog}</div>
-                  )}
-                </div>
+          <li key={v.version + v.createdAt} className="border border-black dark:border-white">
+            {/* Version Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-4 sm:p-6 border-b border-black dark:border-white">
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-xl sm:text-2xl font-mono mb-2">{v.version}</div>
+                {v.changelog && (
+                  <p className="text-sm font-mono text-black/60 dark:text-white/60 mb-2">
+                    {v.changelog}
+                  </p>
+                )}
+                {v.commitSha && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono text-black/60 dark:text-white/60">
+                      Commit:
+                    </span>
+                    <code className="text-xs font-mono border border-black dark:border-white px-2 py-1">
+                      {v.commitSha.substring(0, 7)}
+                    </code>
+                  </div>
+                )}
               </div>
-              {/* Use a deterministic format and suppress hydration warnings */}
-              <span className="text-sm font-black opacity-70 border-2 border-black dark:border-white px-3 py-1" suppressHydrationWarning>
+              <span className="text-xs sm:text-sm font-mono text-black/60 dark:text-white/60 whitespace-nowrap" suppressHydrationWarning>
                 {toISODate(v.createdAt)}
               </span>
             </div>
 
-            <Tabs tabs={tabs} initial={initialTab}>
-              {(active) => {
-                if (active === "builds") return <VersionBuilds slug={slug} version={v.version} />;
-                if (active === "readme") return <Markdown content={v.readme} />;
-                if (active === "usage") return <Markdown content={v.usage} />;
-                if (active === "preview") {
-                  // Use the actual previewUrl from the version data if available
-                  // Otherwise fall back to the redirect API endpoint
-                  const previewUrl = v.previewUrl || previewApi.getPreviewUrl(slug, v.version);
-                  return <PreviewIframe url={previewUrl} />;
-                }
-                if (active === "code") {
-                  return (
-                    <div className="p-6 border-2 border-black dark:border-white bg-white dark:bg-black">
-                      <span className="text-4xl mb-4 block">💻</span>
-                      <a 
-                        href={v.codeUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-black text-lg text-blue-600 dark:text-blue-400 hover:underline uppercase tracking-wide inline-flex items-center gap-2"
-                      >
-                        View Code <span className="text-2xl">→</span>
-                      </a>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            </Tabs>
+            {/* Tabs Content */}
+            <div className="p-4 sm:p-6">
+              <Tabs tabs={tabs} initial={initialTab}>
+                {(active) => {
+                  if (active === "builds") return <VersionBuilds slug={slug} version={v.version} />;
+                  if (active === "readme") return <Markdown content={v.readme} />;
+                  if (active === "usage") return <Markdown content={v.usage} />;
+                  if (active === "preview") {
+                    // Use the actual previewUrl from the version data if available
+                    const previewUrl = v.previewUrl || previewApi.getPreviewUrl(slug, v.version);
+                    return <PreviewIframe url={previewUrl} />;
+                  }
+                  if (active === "code") {
+                    return (
+                      <div className="p-8 border border-black dark:border-white text-center">
+                        <a 
+                          href={v.codeUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-block font-mono text-sm hover:underline"
+                        >
+                          View Code on GitHub →
+                        </a>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              </Tabs>
+            </div>
           </li>
         );
       })}

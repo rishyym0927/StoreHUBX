@@ -1,6 +1,8 @@
+// ComponentDetail.tsx
 import { componentApi, versionApi } from "@/lib/api";
 import { formatDate } from "@/lib/api-utils";
-import { VersionsList, VersionDoc } from "@/components/common/version-list";
+import { VersionsDisplay } from "@/components/common/version-list";
+import { AutoDeploy } from "@/components/common/auto-deploy";
 import type { Component, ComponentVersion } from "@/types";
 
 export default async function ComponentDetail({
@@ -9,118 +11,135 @@ export default async function ComponentDetail({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-
   const comp = await componentApi.get(slug);
   const versions = await versionApi.list(slug);
-  
+
   // Format creation date consistently (server-safe)
   const createdDate = comp.createdAt 
     ? formatDate(comp.createdAt)
     : "—";
-  
-  return (
-    <div className="space-y-10 max-w-7xl mx-auto">
-      {/* Hero Section - Bold Black & White Design */}
-      <section className="relative border-1 border-black dark:border-white p-8 bg-white dark:bg-black">
-        <div className="space-y-6">
-          <a
-            href={`/components/${slug}/import`}
-            className="inline-flex items-center gap-3 px-5 py-3 border-1 border-black dark:border-white bg-white dark:bg-black hover:scale-105 transition-transform duration-200 font-bold group"
-          >
-            <span className="text-2xl group-hover:scale-125 transition-transform">🔗</span>
-            <span className="uppercase tracking-wide text-sm">Link GitHub Repository</span>
-          </a>
 
-          <div>
-            <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tight text-black dark:text-white  leading-tight">
-              {comp.name}
-            </h1>
-            <p className="text-lg font-bold text-black dark:text-white leading-relaxed max-w-3xl border-l-4 border-black dark:border-white pl-4">
-              {comp.description}
-            </p>
-          </div>
-          
-          {/* Framework Badges - Bold with Colored Borders */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {(comp.frameworks ?? []).map((fw, idx) => {
-              const colors = [
-                'border-blue-600 text-blue-600',
-                'border-purple-600 text-purple-600',
-                'border-green-600 text-green-600',
-                'border-red-600 text-red-600',
-                'border-yellow-600 text-yellow-600',
-                'border-pink-600 text-pink-600',
-              ];
-              const colorClass = colors[idx % colors.length];
-              return (
-                <span 
-                  key={fw} 
-                  className={`px-5 py-2.5 border-1 ${colorClass} bg-white dark:bg-black font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform cursor-default`}
-                >
-                  {fw}
-                </span>
-              );
-            })}
-          </div>
-          
-          {/* Metadata Section - Bold Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4  border-black dark:border-white">
-            <div className="flex items-center gap-3 p-4 border-1 border-black dark:border-white bg-white dark:bg-black">
-              <span className="text-3xl">📄</span>
-              <div>
-                <div className="text-xs font-black uppercase opacity-60">License</div>
-                <div className="font-black text-sm">{comp.license ?? "No License"}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 border-1 border-black dark:border-white bg-white dark:bg-black">
-              <span className="text-3xl">📅</span>
-              <div>
-                <div className="text-xs font-black uppercase opacity-60">Created</div>
-                <div className="font-black text-sm">{createdDate}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 border-1 border-black dark:border-white bg-white dark:bg-black">
-              {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo ? (
-                <>
-                  <span className="text-3xl">✅</span>
-                  <div>
-                    <div className="text-xs font-black uppercase text-green-600">Status</div>
-                    <div className="font-black text-sm text-green-600">GitHub Linked</div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl">❌</span>
-                  <div>
-                    <div className="text-xs font-black uppercase text-red-600">Status</div>
-                    <div className="font-black text-sm text-red-600">Not Linked</div>
-                  </div>
-                </>
+  return (
+    <div className="min-h-screen bg-white dark:bg-black">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12">
+          {/* Left Column - Component Info */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Component Title and Description */}
+            <div className="space-y-4">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight border-b-2 border-black dark:border-white pb-4">
+                {comp.name}
+              </h1>
+              
+              {comp.description && (
+                <p className="text-sm font-mono text-black/60 dark:text-white/60 leading-relaxed">
+                  {comp.description}
+                </p>
               )}
             </div>
+
+            {/* Framework Badges */}
+            {comp.frameworks && comp.frameworks.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-black dark:border-white">
+                {comp.frameworks.map((fw) => (
+                  <span 
+                    key={fw} 
+                    className="px-2 py-1 border border-black dark:border-white text-xs font-mono"
+                  >
+                    {fw}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Metadata */}
+            <div className="space-y-3 pb-4 border-b border-black dark:border-white">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-mono text-black/60 dark:text-white/60">License</span>
+                <span className="font-mono font-bold">{comp.license ?? "None"}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-mono text-black/60 dark:text-white/60">Created</span>
+                <span className="font-mono font-bold">{createdDate}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-mono text-black/60 dark:text-white/60">Status</span>
+                {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo ? (
+                  <span className="font-mono font-bold text-green-600 dark:text-green-400">
+                    ✓ Linked
+                  </span>
+                ) : (
+                  <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                    Not Linked
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* GitHub Repository Info */}
+            {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
+              <div className="space-y-2 pb-4 border-b border-black dark:border-white">
+                <div className="text-xs font-mono text-black/60 dark:text-white/60">
+                  Repository
+                </div>
+                <div className="font-mono text-xs break-all">
+                  <a 
+                    href={`https://github.com/${comp.repoLink.owner}/${comp.repoLink.repo}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {comp.repoLink.owner}/{comp.repoLink.repo}
+                  </a>
+                  {comp.repoLink.path && (
+                    <span className="text-black/60 dark:text-white/60"> / {comp.repoLink.path}</span>
+                  )}
+                </div>
+                <div className="text-xs font-mono text-black/60 dark:text-white/60">
+                  Branch: {comp.repoLink.ref || "main"}
+                </div>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <div>
+              <a
+                href={`/components/${slug}/import`}
+                className="block w-full text-center border-2 border-black dark:border-white px-4 py-3 text-sm font-mono transition-transform hover:scale-105 active:scale-95"
+              >
+                {comp.repoLink?.owner ? "Change Repository" : "Link GitHub"}
+              </a>
+            </div>
+          </div>
+
+          {/* Right Column - Preview and Versions */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Auto-Deploy Section (only for linked repos) */}
+            {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
+              <section>
+                <AutoDeploy component={comp} versions={versions ?? []} />
+              </section>
+            )}
+
+            {/* Versions Section */}
+            <section className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b-2 border-black dark:border-white">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-1">
+                    Versions
+                  </h2>
+                  <p className="text-xs font-mono text-black/60 dark:text-white/60">
+                    {versions && versions.length > 0 ? `${versions.length} version${versions.length > 1 ? 's' : ''} available` : 'No versions yet'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Versions Display */}
+              <VersionsDisplay slug={slug} versions={versions ?? []} />
+            </section>
           </div>
         </div>
-      </section>
-
-      {/* Versions Section - Bold Layout */}
-      <section>
-        <div className="flex items-center justify-between  pb-4 border-black dark:border-white">
-          <div>
-            <h2 className="text-4xl font-black uppercase tracking-tight text-black dark:text-white">Versions</h2>
-            <p className="text-sm font-bold opacity-70 mt-1 uppercase tracking-wide">Browse and manage component versions</p>
-          </div>
-          <a
-            href={`/components/${slug}/new-version`}
-            className="group inline-flex items-center gap-3 px-6 py-3 bg-black dark:bg-white text-white dark:text-black border-1 border-black dark:border-white font-black uppercase text-sm tracking-wide transition-transform duration-200 hover:scale-105"
-          >
-            <span className="text-2xl group-hover:rotate-90 transition-transform duration-200">➕</span>
-            <span>Add Version</span>
-          </a>
-        </div>
-
-        {/* Client wrapper handles tabs/render functions on client */}
-        <VersionsList slug={slug} versions={versions ?? []} />
-      </section>
+      </div>
     </div>
   );
 }

@@ -15,18 +15,18 @@ export function Tabs({
 }) {
   const [active, setActive] = useState(initial);
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap border-b border-black dark:border-white">
         {tabs.map((t) => {
           const isActive = t.id === active;
           return (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
-              className={`font-black uppercase tracking-wide text-xs px-5 py-2.5 border-2 transition-all duration-200 ${
+              className={`font-mono text-xs px-3 py-2 border-b-2 transition-colors ${
                 isActive 
-                  ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white scale-105" 
-                  : "bg-white dark:bg-black text-black dark:text-white border-black dark:border-white hover:scale-105"
+                  ? "border-black dark:border-white font-bold" 
+                  : "border-transparent text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
               }`}
             >
               {t.label}
@@ -34,7 +34,7 @@ export function Tabs({
           );
         })}
       </div>
-      <div className="border-t-2 border-black dark:border-white pt-6">{children(active)}</div>
+      <div>{children(active)}</div>
     </div>
   );
 }

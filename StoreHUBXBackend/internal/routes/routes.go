@@ -42,6 +42,9 @@ func RegisterRoutes(app *fiber.App) {
 	// Link a component to a GitHub repo/folder (Phase 4.3)
 	api.Post("/components/:slug/link", handlers.LinkComponentRepo)
 
+	// Auto-deploy new commit (Phase 4.5)
+	api.Post("/components/:slug/deploy", handlers.AutoDeploy)
+
 	//phase 4.4
 	api.Post("/components/:slug/versions/:version/build", handlers.EnqueueBuild)
 	api.Get("/builds/:id", handlers.GetBuild)
