@@ -69,3 +69,30 @@ html, body {
   background: white;
   color: black;
 }
+
+/* Custom Animations */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Background Pattern (SVG Grid) */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.dark .bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+}
+
