@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/store";
 import { componentApi, userApi, versionApi, previewApi } from "@/lib/api";
 import { PreviewIframe } from "@/components/common/preview-iframe";
@@ -28,7 +29,7 @@ function FeaturedComponentCard({ component }: { component: Component }) {
     }
   }, [showPreview, component.slug, latestVersion, loadingVersion]);
 
-  const previewUrl = latestVersion 
+  const previewUrl = latestVersion
     ? (latestVersion.previewUrl || previewApi.getPreviewUrl(component.slug, latestVersion.version))
     : null;
 
@@ -81,12 +82,12 @@ function FeaturedComponentCard({ component }: { component: Component }) {
               <p className="text-sm font-mono text-black/60 dark:text-white/60 mb-8 max-w-md mx-auto">
                 This component doesn&apos;t have a published version yet
               </p>
-              <a
+              <Link
                 href={`/components/${component.slug}`}
                 className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none"
               >
                 View Details →
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -137,15 +138,15 @@ export default function Home() {
       try {
         const res = await componentApi.list({ limit: 12, page: 1 });
         console.log("Fetched components:", res);
-        
+
         // Get the components array from the response
         const componentsArray = res.components || [];
-        
+
         // Filter out components with duplicate slugs (keep the newest one)
         const uniqueComponents = componentsArray.reduce<Component[]>((acc, curr) => {
           // Find existing component with same slug
           const existingIndex = acc.findIndex(c => c.slug === curr.slug);
-          
+
           if (existingIndex === -1) {
             // No duplicate, add to array
             acc.push(curr);
@@ -154,7 +155,7 @@ export default function Home() {
             const existing = acc[existingIndex];
             const existingDate = new Date(existing.updatedAt || existing.createdAt || 0);
             const currentDate = new Date(curr.updatedAt || curr.createdAt || 0);
-            
+
             if (currentDate > existingDate) {
               // Replace with newer version
               acc[existingIndex] = curr;
@@ -162,7 +163,7 @@ export default function Home() {
           }
           return acc;
         }, []);
-        
+
         if (mounted) setComponents(uniqueComponents);
       } catch (err) {
         console.error("Error fetching components:", err);
@@ -188,7 +189,7 @@ export default function Home() {
       linkedRepos: components.filter(c => c.repoLink?.owner && c.repoLink?.repo).length
     };
   }, [components]);
- 
+
   return (
     <div className="space-y-12 pb-12">
       {/* Compact Hero Section */}
@@ -210,18 +211,18 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a
+              <Link
                 href="/components/new"
                 className="border-2 border-black dark:border-white px-3 py-1.5 font-mono text-xs bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95"
               >
                 + Create
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/components"
                 className="border-2 border-black dark:border-white px-3 py-1.5 font-mono text-xs transition-transform hover:scale-105 active:scale-95"
               >
                 Browse All
-              </a>
+              </Link>
             </div>
           </div>
         ) : (
@@ -244,12 +245,12 @@ export default function Home() {
                 </svg>
                 Sign in
               </a>
-              <a
+              <Link
                 href="/components"
                 className="border-2 border-black dark:border-white px-3 py-1.5 font-mono text-xs transition-transform hover:scale-105 active:scale-95"
               >
                 Explore
-              </a>
+              </Link>
             </div>
           </div>
         )}
@@ -284,12 +285,12 @@ export default function Home() {
               See components in action • Click to explore details
             </p>
           </div>
-          <a 
-            href="/components" 
+          <Link
+            href="/components"
             className="border-2 border-black dark:border-white px-4 py-2 text-sm font-mono transition-transform hover:scale-105 active:scale-95 hidden sm:block"
           >
             View All →
-          </a>
+          </Link>
         </div>
 
         {loadingComps ? (
@@ -310,17 +311,17 @@ export default function Home() {
             <div className="text-6xl mb-6">🎨</div>
             <div className="font-bold text-2xl mb-3">No components yet</div>
             <div className="text-sm text-black/60 dark:text-white/60 font-mono mb-8 max-w-md mx-auto">
-              {isMember 
-                ? "Be the first to showcase your component with a live preview!" 
+              {isMember
+                ? "Be the first to showcase your component with a live preview!"
                 : "Join our community and start sharing your amazing components."}
             </div>
             {isMember ? (
-              <a
+              <Link
                 href="/components/new"
                 className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95"
               >
                 + Create First Component
-              </a>
+              </Link>
             ) : (
               <a
                 href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
@@ -335,15 +336,15 @@ export default function Home() {
             {components.slice(0, 6).map((c) => (
               <FeaturedComponentCard key={c.id || c.slug} component={c} />
             ))}
-            
+
             {/* View All Button */}
             <div className="text-center pt-4">
-              <a 
-                href="/components" 
+              <Link
+                href="/components"
                 className="inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono transition-transform hover:scale-105 active:scale-95 bg-white text-black dark:bg-black dark:text-white"
               >
                 Explore All {components.length} Components →
-              </a>
+              </Link>
             </div>
           </div>
         )}
