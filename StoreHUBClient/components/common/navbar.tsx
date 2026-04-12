@@ -9,11 +9,11 @@ export function Navbar() {
   const { user, token, clear } = useAuth();
 
   return (
-    <header className="border-b-2 border-black dark:border-white">
-      <div className="h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-black/80 border-b border-black/10 dark:border-white/10">
+      <div className="h-16 flex items-center justify-between gap-4 px-4 sm:px-6">
         {/* Logo */}
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="text-xl sm:text-2xl font-bold tracking-tight hover:opacity-70 transition-opacity shrink-0"
         >
           StoreHUB<span className="text-black/40 dark:text-white/40">X</span>
@@ -22,8 +22,8 @@ export function Navbar() {
         {/* Navigation */}
         <nav className="flex items-center gap-2 sm:gap-3">
           {/* Browse Components */}
-          <Link 
-            href="/components" 
+          <Link
+            href="/components"
             className="text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5 transition-transform hover:scale-105 active:scale-95"
           >
             Browse
@@ -31,8 +31,8 @@ export function Navbar() {
 
           {/* New Component (Authenticated Only) */}
           {token && (
-            <Link 
-              href="/components/new" 
+            <Link
+              href="/components/new"
               className="text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5 bg-white text-black dark:bg-black dark:text-white transition-transform hover:scale-105 active:scale-95"
             >
               + New
@@ -50,19 +50,19 @@ export function Navbar() {
             <>
               {/* Divider */}
               <div className="hidden sm:block w-px h-6 bg-black dark:bg-white opacity-30"></div>
-              
+
               <div className="flex items-center gap-2">
                 {/* Profile Link with Avatar */}
-                <Link 
-                  href="/me" 
+                <Link
+                  href="/me"
                   className="flex items-center gap-2 border-2 border-black dark:border-white px-2 py-1 transition-transform hover:scale-105 active:scale-95"
                   title={user.username || user.name || 'Profile'}
                 >
                   <Avatar.Root className="w-5 h-5 sm:w-6 sm:h-6 border border-black dark:border-white overflow-hidden bg-black dark:bg-white">
-                    <Avatar.Image 
-                      src={user.avatarUrl} 
-                      alt={user.username || user.name || 'User'} 
-                      className="object-cover w-full h-full" 
+                    <Avatar.Image
+                      src={user.avatarUrl}
+                      alt={user.username || user.name || 'User'}
+                      className="object-cover w-full h-full"
                     />
                     <Avatar.Fallback className="bg-black dark:bg-white text-white dark:text-black text-xs font-bold flex items-center justify-center w-full h-full">
                       {user.username?.[0]?.toUpperCase() || user.name?.[0]?.toUpperCase() || 'U'}
@@ -74,8 +74,8 @@ export function Navbar() {
                 </Link>
 
                 {/* Logout */}
-                <button 
-                  onClick={() => clear()} 
+                <button
+                  onClick={() => clear()}
                   className="hidden sm:block text-xs font-mono border-2 border-black dark:border-white px-3 py-1.5 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
                   title="Sign out"
                 >
@@ -87,7 +87,7 @@ export function Navbar() {
             <>
               {/* Divider */}
               <div className="hidden sm:block w-px h-6 bg-black dark:bg-white opacity-30"></div>
-              
+
               <a
                 href={`${process.env.NEXT_PUBLIC_API_BASE}/auth/github/login`}
                 className="text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 sm:px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95 inline-flex items-center gap-1.5"

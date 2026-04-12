@@ -7,14 +7,14 @@ interface ComponentCardProps {
   currentUserId?: string;
 }
 
-export function ComponentCard({ 
-  component, 
+export function ComponentCard({
+  component,
   showOwnerActions = false,
-  currentUserId 
+  currentUserId
 }: ComponentCardProps) {
   const isLinked = component.repoLink?.owner && component.repoLink?.repo;
   const isOwner = currentUserId && currentUserId === component.ownerId;
-  
+
   return (
     <div className="group border-2 border-black dark:border-white transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:active:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
       <div className="p-6 space-y-4">
@@ -33,7 +33,7 @@ export function ComponentCard({
               </p>
             )}
           </Link>
-          
+
           {/* Status Badge */}
           <div className="shrink-0">
             {isLinked ? (
@@ -96,7 +96,7 @@ export function ComponentCard({
               <span className="font-bold">{component.license}</span>
             </div>
           )}
-          
+
           {/* Created Date */}
           {component.createdAt && (
             <div className="flex items-center gap-1.5">
