@@ -9,6 +9,7 @@ import (
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // GetProfile returns complete user details with all their components
@@ -31,7 +32,8 @@ func GetProfile(c *fiber.Ctx) error {
 
 	// Fetch all components belonging to this user
 	componentCol := db.Client.Database("storehub").Collection("components")
-	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId})
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId}, opts)
 	if err != nil {
 		return utils.Error(c, 500, "failed to fetch components")
 	}
@@ -83,7 +85,8 @@ func GetProfileById(c *fiber.Ctx) error {
 
 	// Fetch all components belonging to this user
 	componentCol := db.Client.Database("storehub").Collection("components")
-	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId})
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId}, opts)
 	if err != nil {
 		return utils.Error(c, 500, "failed to fetch components")
 	}
