@@ -6,6 +6,8 @@ import { RepositoryInfo } from "@/components/common/repository-info";
 import { ComponentDetailTabs } from "@/components/common/component-detail-tabs";
 import { OwnerActions } from "@/components/common/owner-actions";
 import { InstallCommand } from "@/components/common/install-command";
+import { LikeButton } from "@/components/common/like-button";
+import { ComponentComments } from "@/components/common/component-comments";
 
 import type { Component, ComponentVersion, User } from "@/types";
 
@@ -58,9 +60,16 @@ export default async function ComponentDetail({
           <div className="lg:col-span-1 space-y-6">
             {/* Component Title and Description */}
             <div className="space-y-4">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight border-b-2 border-black dark:border-white pb-4">
-                {comp.name}
-              </h1>
+              <div className="border-b-2 border-black dark:border-white pb-4 flex items-start justify-between">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                  {comp.name}
+                </h1>
+                <LikeButton 
+                   slug={comp.slug} 
+                   initialLikeCount={comp.likeCount || 0} 
+                   initialLikedBy={comp.likedBy || []} 
+                />
+              </div>
               
               {comp.description && (
                 <p className="text-sm font-mono text-black/60 dark:text-white/60 leading-relaxed">
@@ -85,19 +94,27 @@ export default async function ComponentDetail({
               <div className="text-xs font-mono text-black/60 dark:text-white/60 mb-3 uppercase tracking-wider">
                 Quick Stats
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center p-3 border border-black dark:border-white bg-black/5 dark:bg-white/5">
-                  <div className="text-2xl font-bold font-mono">{versions.length}</div>
-                  <div className="text-xs font-mono text-black/60 dark:text-white/60 mt-1">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
+                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">{versions.length}</div>
+                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
                     Version{versions.length !== 1 ? 's' : ''}
                   </div>
                 </div>
-                <div className="text-center p-3 border border-black dark:border-white bg-black/5 dark:bg-white/5">
-                  <div className="text-2xl font-bold font-mono">
+                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
+                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">
                     {comp.frameworks?.length || 0}
                   </div>
-                  <div className="text-xs font-mono text-black/60 dark:text-white/60 mt-1">
-                    Framework{comp.frameworks?.length !== 1 ? 's' : ''}
+                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
+                    Frameworks
+                  </div>
+                </div>
+                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
+                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">
+                    {comp.viewCount || 0}
+                  </div>
+                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
+                    Views
                   </div>
                 </div>
               </div>
@@ -218,6 +235,9 @@ export default async function ComponentDetail({
 
             {/* Tabs Section */}
             <ComponentDetailTabs component={comp} versions={versions} />
+
+            {/* Discussions Section */}
+            <ComponentComments slug={comp.slug} />
           </div>
         </div>
       </div>

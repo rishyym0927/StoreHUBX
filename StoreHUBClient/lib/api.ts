@@ -10,6 +10,7 @@ import type {
   ComponentVersion,
   VersionCreateRequest,
   VersionCreateResponse,
+  Comment,
   AutoDeployRequest,
   BuildEnqueueResponse,
   BuildStatusResponse,
@@ -180,6 +181,64 @@ export const componentApi = {
       {
         method: "POST",
         body: JSON.stringify(data),
+        authToken,
+      }
+    );
+    return response;
+  },
+  /**
+   * Toggle like on a component (requires auth)
+   */
+  async toggleLike(slug: string, authToken: string) {
+    const response = await apiFetch<{ message: string; component: Component }>(
+      `/api/components/${slug}/like`,
+      {
+        method: "POST",
+        authToken,
+      }
+    );
+    return response;
+  },
+};
+
+// ========================================
+// Comment API
+// ========================================
+
+export const commentApi = {
+  /**
+   * List all comments for a component
+   */
+  async list(slug: string) {
+    const response = await apiFetch<{ comments: Comment[] }>(
+      `/components/${slug}/comments`
+    );
+    return response.comments;
+  },
+
+  /**
+   * Add a comment to a component (requires auth)
+   */
+  async create(slug: string, content: string, authToken: string) {
+    const response = await apiFetch<{ message: string; comment: Comment }>(
+      `/api/components/${slug}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ content }),
+        authToken,
+      }
+    );
+    return response.comment;
+  },
+
+  /**
+   * Delete a comment (requires auth)
+   */
+  async delete(slug: string, commentId: string, authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      `/api/components/${slug}/comments/${commentId}`,
+      {
+        method: "DELETE",
         authToken,
       }
     );

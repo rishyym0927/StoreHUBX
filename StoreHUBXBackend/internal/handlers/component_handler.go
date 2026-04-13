@@ -147,7 +147,6 @@ func GetComponent(c *fiber.Ctx) error {
 
 	updateParams := bson.M{
 		"$addToSet": bson.M{"uniqueVisitors": visitorID},
-		"$inc":      bson.M{"viewCount": 1},
 	}
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
@@ -155,6 +154,9 @@ func GetComponent(c *fiber.Ctx) error {
 	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+
+	// Ensure viewCount accurately reflects unique visitors
+	comp.ViewCount = len(comp.UniqueVisitors)
 
 	return utils.Success(c, fiber.Map{
 		"component": comp,

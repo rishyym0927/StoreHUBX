@@ -41,6 +41,17 @@ func GetComments(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to decode comments")
 	}
 
+	// Dynamically populate user details so even old comments get the latest names & avatars
+	userCol := db.Client.Database("storehub").Collection("users")
+	for i := range comments {
+		var author models.User
+		if err := userCol.FindOne(ctx, bson.M{"providerId": comments[i].UserID}).Decode(&author); err == nil {
+			comments[i].AuthorUsername = author.Username
+			comments[i].AuthorName = author.Name
+			comments[i].AuthorAvatar = author.AvatarURL
+		}
+	}
+
 	return utils.Success(c, fiber.Map{
 		"comments": comments,
 	})
@@ -72,12 +83,22 @@ func AddComment(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
+	// 1.5 Get the User for author details
+	userCol := db.Client.Database("storehub").Collection("users")
+	var author models.User
+	if err := userCol.FindOne(ctx, bson.M{"providerId": uid}).Decode(&author); err != nil {
+		return utils.Error(c, 404, "user not found")
+	}
+
 	// 2. Create the comment
 	newComment := models.Comment{
-		ComponentID: comp.ID,
-		UserID:      uid,
-		Content:     payload.Content,
-		CreatedAt:   time.Now(),
+		ComponentID:    comp.ID,
+		UserID:         uid,
+		AuthorUsername: author.Username,
+		AuthorName:     author.Name,
+		AuthorAvatar:   author.AvatarURL,
+		Content:        payload.Content,
+		CreatedAt:      time.Now(),
 	}
 
 	commentCol := db.Client.Database("storehub").Collection("comments")

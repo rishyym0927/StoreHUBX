@@ -32,8 +32,23 @@ export interface Component {
   license: string;
   ownerId: string;
   repoLink?: RepoLink | null;
+  likedBy?: string[];
+  likeCount?: number;
+  uniqueVisitors?: string[];
+  viewCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Comment {
+  id: string;
+  componentId: string;
+  userId: string;
+  authorUsername?: string;
+  authorName?: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
 }
 
 export type BuildState = "none" | "queued" | "running" | "ready" | "error";
