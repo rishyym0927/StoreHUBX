@@ -295,7 +295,7 @@ export default function Home() {
           </div>
           <h3 className="text-2xl font-bold uppercase tracking-tight">Live Previews</h3>
           <p className="font-mono text-sm text-black/70 dark:text-white/70">
-            See exactly what you're getting. Every component supports an interactive live preview rendered securely.
+            See exactly what you are getting. Every component supports an interactive live preview rendered securely.
           </p>
           <div className="pt-4 border-t-2 border-black dark:border-white">
             <span className="text-4xl font-black">{stats.totalComponents}</span>
