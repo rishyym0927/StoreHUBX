@@ -15,12 +15,16 @@ type Component struct {
 	Tags        []string           `bson:"tags" json:"tags"`
 	License     string             `bson:"license" json:"license"`
 	OwnerID     string             `bson:"ownerId" json:"ownerId"`
-	RepoLink    RepoLink           `bson:"repoLink" json:"repoLink"`
-	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt   time.Time          `bson:"updatedAt" json:"updatedAt"`
-	// add version  now from version model
+	RepoLink       RepoLink           `bson:"repoLink" json:"repoLink"`
 	
-
+	// Social & Analytics (MVP Arrays)
+	LikedBy        []string           `bson:"likedBy" json:"likedBy"`               // Array of UserIDs
+	LikeCount      int                `bson:"likeCount" json:"likeCount"`           // Current count of likes
+	UniqueVisitors []string           `bson:"uniqueVisitors" json:"uniqueVisitors"` // Array of UserIDs or IP Hashes
+	ViewCount      int                `bson:"viewCount" json:"viewCount"`           // Current count of unique visitors
+	
+	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type RepoLink struct {

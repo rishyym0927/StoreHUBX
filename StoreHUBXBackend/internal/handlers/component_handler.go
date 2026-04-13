@@ -137,13 +137,84 @@ func GetComponent(c *fiber.Ctx) error {
 
 	col := db.Client.Database("storehub").Collection("components")
 
+	visitorID := c.IP()
+	if uid, ok := c.Locals("user_id").(string); ok && uid != "" {
+		visitorID = uid
+	}
+	if visitorID == "" {
+		visitorID = "anonymous"
+	}
+
+	updateParams := bson.M{
+		"$addToSet": bson.M{"uniqueVisitors": visitorID},
+		"$inc":      bson.M{"viewCount": 1},
+	}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
 	var comp models.Component
-	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
 	return utils.Success(c, fiber.Map{
 		"component": comp,
+	})
+}
+
+//
+// POST /components/:slug/like (Protected)
+//
+func ToggleLikeComponent(c *fiber.Ctx) error {
+	slug := c.Params("slug")
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return utils.Error(c, 401, "unauthorized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	col := db.Client.Database("storehub").Collection("components")
+
+	// Check if already liked by this user
+	var comp models.Component
+	err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp)
+	if err != nil {
+		return utils.Error(c, 404, "component not found")
+	}
+
+	isLiked := false
+	for _, id := range comp.LikedBy {
+		if id == uid {
+			isLiked = true
+			break
+		}
+	}
+
+	var updateParams bson.M
+	if isLiked {
+		// Unlike
+		updateParams = bson.M{
+			"$pull": bson.M{"likedBy": uid},
+			"$inc":  bson.M{"likeCount": -1},
+		}
+	} else {
+		// Like
+		updateParams = bson.M{
+			"$addToSet": bson.M{"likedBy": uid},
+			"$inc":      bson.M{"likeCount": 1},
+		}
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var updatedComp models.Component
+	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&updatedComp); err != nil {
+		return utils.Error(c, 500, "failed to update like status")
+	}
+
+	return utils.Success(c, fiber.Map{
+		"message":   "like toggled",
+		"component": updatedComp,
 	})
 }
 

@@ -27,6 +27,7 @@ func RegisterRoutes(app *fiber.App) {
 	app.Get("/components", handlers.GetAllComponents)
 	app.Get("/components/:slug", handlers.GetComponent)
 	app.Get("/components/:slug/versions", handlers.GetComponentVersions)
+	app.Get("/components/:slug/comments", handlers.GetComments)
 
 	// Preview (public access)
 	app.Get("/preview/:slug/:version", handlers.RedirectPreview)
@@ -38,6 +39,11 @@ func RegisterRoutes(app *fiber.App) {
 	// Components (writes)
 	api.Post("/components", handlers.CreateComponent)
 	api.Post("/components/:slug/versions", handlers.AddVersion)
+	
+	// Social
+	api.Post("/components/:slug/like", handlers.ToggleLikeComponent)
+	api.Post("/components/:slug/comments", handlers.AddComment)
+	api.Delete("/components/:slug/comments/:commentId", handlers.DeleteComment)
 
 	// Link a component to a GitHub repo/folder (Phase 4.3)
 	api.Post("/components/:slug/link", handlers.LinkComponentRepo)
