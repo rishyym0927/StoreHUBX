@@ -73,6 +73,7 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Authenticated profile
 	api.Get("/me", handlers.GetProfile)
+	api.Get("/me/analytics", handlers.GetOwnerAnalytics)
 	// Get user profile by ID (for public viewing; OptionalAuth to reveal the
 	// viewer's own private/collaborator components on that profile)
 	app.Get("/users/:id", middleware.OptionalAuth, handlers.GetProfileById)

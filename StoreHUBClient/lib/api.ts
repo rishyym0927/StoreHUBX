@@ -22,6 +22,7 @@ import type {
   GitHubContent,
   GitHubBranch,
   UserProfileResponse,
+  OwnerAnalyticsResponse,
   ComponentsQueryParams,
   GitHubReposQueryParams,
   GitHubContentsQueryParams,
@@ -530,6 +531,16 @@ export const userApi = {
    */
   async getProfile(authToken: string) {
     const response = await apiFetch<UserProfileResponse>("/api/me", {
+      authToken,
+    });
+    return response;
+  },
+
+  /**
+   * Get usage analytics (views/likes/ratings/comments) for the caller's own components
+   */
+  async getAnalytics(authToken: string) {
+    const response = await apiFetch<OwnerAnalyticsResponse>("/api/me/analytics", {
       authToken,
     });
     return response;

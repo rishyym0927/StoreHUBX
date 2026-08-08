@@ -253,6 +253,26 @@ export interface RatingUpsertResponse {
   rating: Rating;
 }
 
+export interface ComponentAnalytics {
+  slug: string;
+  name: string;
+  viewCount: number;
+  likeCount: number;
+  averageRating: number;
+  ratingCount: number;
+  commentCount: number;
+}
+
+export interface OwnerAnalyticsResponse {
+  components: ComponentAnalytics[];
+  totals: {
+    componentCount: number;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+  };
+}
+
 export interface UserProfileResponse {
   user: User;
   components: Component[];

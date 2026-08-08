@@ -262,12 +262,20 @@ export default function Me() {
                       </p>
                     )}
                   </div>
-                  <Link
-                    href="/components/new"
-                    className="inline-block border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
-                  >
-                    + NEW COMPONENT
-                  </Link>
+                  <div className="flex gap-3">
+                    <Link
+                      href="/me/analytics"
+                      className="inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                    >
+                      ANALYTICS
+                    </Link>
+                    <Link
+                      href="/components/new"
+                      className="inline-block border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                    >
+                      + NEW COMPONENT
+                    </Link>
+                  </div>
                 </div>
 
                 {!profile.components || profile.components.length === 0 ? (
