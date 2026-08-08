@@ -8,6 +8,7 @@ import { ComponentCard } from "@/components/common/component-card";
 import { Pagination } from "@/components/common/pagination";
 import { useAuth } from "@/lib/store";
 import { userApi, ApiError } from "@/lib/api";
+import { MapPin, Link2, Star, Package } from "lucide-react";
 import type { UserProfileResponse } from "@/types";
 
 interface GithubPublicProfile {
@@ -205,16 +206,16 @@ export default function Me() {
                         )}
                         <div className="flex flex-wrap gap-4 text-xs font-bold text-black/70 dark:text-white/70">
                           {githubData.location && (
-                             <span className="flex items-center gap-1 border-2 border-black/20 dark:border-white/20 px-3 py-1.5">📍 {githubData.location}</span>
+                             <span className="flex items-center gap-1 border-2 border-black/20 dark:border-white/20 px-3 py-1.5"><MapPin className="w-3.5 h-3.5" /> {githubData.location}</span>
                           )}
                           {githubData.blog && (
                              <a href={githubData.blog.startsWith('http') ? githubData.blog : `https://${githubData.blog}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 border-2 border-black dark:border-white px-3 py-1.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors">
-                               🔗 Website
+                               <Link2 className="w-3.5 h-3.5" /> Website
                              </a>
                           )}
                           {githubData.html_url && (
                              <a href={githubData.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 border-2 border-black dark:border-white px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all active:translate-y-0 active:shadow-none">
-                               ⭐ View GitHub
+                               <Star className="w-3.5 h-3.5" /> View GitHub
                              </a>
                           )}
                         </div>
@@ -283,7 +284,7 @@ export default function Me() {
                   <div className="border-2 border-black dark:border-white p-12 sm:p-20 text-center bg-grid-pattern relative">
                     <div className="absolute inset-0 bg-white/80 dark:bg-black/80 pointer-events-none"></div>
                     <div className="relative z-10 max-w-lg mx-auto space-y-6">
-                      <div className="text-6xl sm:text-8xl">📦</div>
+                      <Package className="w-16 h-16 sm:w-24 sm:h-24 mx-auto stroke-1" />
                       <div>
                         <h3 className="text-4xl font-black uppercase tracking-tighter mb-4">No Components Yet</h3>
                         <p className="text-sm font-mono text-black/80 dark:text-white/80 leading-relaxed font-bold">

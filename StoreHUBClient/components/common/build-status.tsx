@@ -6,6 +6,7 @@ import type { BuildJob } from "@/types";
 import { formatRelativeTime } from "@/lib/api-utils";
 import { buildApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
+import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, RefreshCw, Package, FileText, type LucideIcon } from "lucide-react";
 
 interface BuildStatusProps {
   buildId: string | null;
@@ -63,19 +64,19 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
   if (error) {
     return (
       <div className="border-2 border-red-500/50 bg-red-500/10 rounded-xl p-4">
-        <p className="text-sm text-red-600 dark:text-red-400">⚠️ {error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
       </div>
     );
   }
 
   if (!build) return null;
 
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string): { label: string; icon: LucideIcon; color: string; bg: string; border: string } => {
     switch (status) {
       case "queued":
         return {
           label: "Queued",
-          icon: "⏱️",
+          icon: Clock,
           color: "text-yellow-700 dark:text-yellow-300",
           bg: "bg-yellow-50 dark:bg-yellow-900/20",
           border: "border-yellow-300 dark:border-yellow-700",
@@ -83,7 +84,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       case "running":
         return {
           label: "Building",
-          icon: "⚙️",
+          icon: Loader2,
           color: "text-blue-700 dark:text-blue-300",
           bg: "bg-blue-50 dark:bg-blue-900/20",
           border: "border-blue-300 dark:border-blue-700",
@@ -91,7 +92,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       case "success":
         return {
           label: "Success",
-          icon: "✅",
+          icon: CheckCircle2,
           color: "text-green-700 dark:text-green-300",
           bg: "bg-green-50 dark:bg-green-900/20",
           border: "border-green-300 dark:border-green-700",
@@ -99,7 +100,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       case "error":
         return {
           label: "Failed",
-          icon: "❌",
+          icon: XCircle,
           color: "text-red-700 dark:text-red-300",
           bg: "bg-red-50 dark:bg-red-900/20",
           border: "border-red-300 dark:border-red-700",
@@ -107,7 +108,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       default:
         return {
           label: status,
-          icon: "ℹ️",
+          icon: Info,
           color: "text-gray-700 dark:text-gray-300",
           bg: "bg-gray-50 dark:bg-gray-900/20",
           border: "border-gray-300 dark:border-gray-700",
@@ -130,7 +131,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
           )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg">{statusConfig.icon}</span>
+              <statusConfig.icon className={`w-5 h-5 ${statusConfig.color} ${build.status === "running" ? "animate-spin" : ""}`} />
               <h3 className={`font-semibold ${statusConfig.color}`}>
                 Build {statusConfig.label}
               </h3>
@@ -155,7 +156,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
                 </>
               ) : (
                 <>
-                  <span>🔄</span>
+                  <RefreshCw className="w-4 h-4" />
                   <span>Rebuild</span>
                 </>
               )}
@@ -171,7 +172,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       {/* Rebuild Error Message */}
       {rebuildError && (
         <div className="border-2 border-red-500/50 bg-red-500/10 rounded-lg p-3">
-          <p className="text-sm text-red-600 dark:text-red-400">⚠️ {rebuildError}</p>
+          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {rebuildError}</p>
         </div>
       )}
 
@@ -202,7 +203,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       {/* Artifacts */}
       {build.artifacts?.bundleUrl && (
         <div className="pt-4 border-t">
-          <p className="text-sm font-medium mb-2">📦 Build Artifacts</p>
+          <p className="text-sm font-medium mb-2 flex items-center gap-1.5"><Package className="w-4 h-4" /> Build Artifacts</p>
           <a
             href={build.artifacts.bundleUrl}
             target="_blank"
@@ -217,7 +218,7 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
       {/* Logs */}
       {build.logs && build.logs.length > 0 && (
         <div className="pt-4 border-t">
-          <p className="text-sm font-medium mb-2">📋 Build Logs</p>
+          <p className="text-sm font-medium mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4" /> Build Logs</p>
           <div className="bg-black/5 dark:bg-black/30 rounded-lg p-3 max-h-64 overflow-y-auto">
             <pre className="text-xs font-mono whitespace-pre-wrap">
               {build.logs.join('\n')}

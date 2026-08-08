@@ -10,6 +10,7 @@ import { isValidVersion, isValidUrl } from "@/lib/api-utils";
 import { useRouter } from "next/navigation";
 import type { VersionCreateRequest } from "@/types";
 import { BuildStatus } from "@/components/common/build-status";
+import { CheckCircle2, AlertTriangle, PartyPopper } from "lucide-react";
 
 export default function NewVersion({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string>("");
@@ -109,20 +110,20 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
               <h1 className="text-2xl font-semibold">Add New Version</h1>
               <p className="text-sm opacity-70 mt-1">Component: <span className="font-mono font-medium">{slug}</span></p>
               {component?.repoLink && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  ✓ Linked to {component.repoLink.owner}/{component.repoLink.repo} - Build will be triggered automatically
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Linked to {component.repoLink.owner}/{component.repoLink.repo} - Build will be triggered automatically
                 </p>
               )}
               {!component?.repoLink && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                  ⚠️ No repository linked. Consider linking a GitHub repo for automated builds.
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> No repository linked. Consider linking a GitHub repo for automated builds.
                 </p>
               )}
             </div>
 
             {error && (
               <div className="p-3 border-2 border-red-500/50 bg-red-500/10 rounded-xl text-sm">
-                <p className="text-red-600 dark:text-red-400 font-medium">⚠️ {error}</p>
+                <p className="text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
               </div>
             )}
 
@@ -191,7 +192,7 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
         ) : (
           <div className="space-y-4">
             <div>
-              <h1 className="text-2xl font-semibold">Version Published! 🎉</h1>
+              <h1 className="text-2xl font-semibold flex items-center gap-2">Version Published! <PartyPopper className="w-5 h-5" /></h1>
               <p className="text-sm opacity-70 mt-1">
                 {component?.repoLink 
                   ? "Build has been automatically queued for your component."

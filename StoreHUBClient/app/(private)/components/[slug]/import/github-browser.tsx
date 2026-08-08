@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/store";
 import { githubApi, componentApi } from "@/lib/api";
 import { useGitHubRepos, useGitHubBranches } from "@/hooks/use-api";
+import { AlertTriangle, FolderOpen, Link2 } from "lucide-react";
 import type { GitHubRepo, GitHubContent } from "@/types";
 
 type BrowserStep = "select-repo" | "browse-folders" | "confirm";
@@ -184,7 +185,7 @@ const fetchBranchSha = async () => {
 
       {!token ? (
         <div className="p-6 border-2 border-yellow-300 dark:border-yellow-700 rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
-          <p className="text-sm font-medium">⚠️ Authentication Required</p>
+          <p className="text-sm font-medium flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Authentication Required</p>
           <p className="text-sm mt-1 opacity-80">Please log in with GitHub to browse repositories.</p>
         </div>
       ) : (
@@ -353,9 +354,9 @@ const fetchBranchSha = async () => {
                       setShowBranchDropdown(false);
                       listContents("");
                     }}
-                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5"
                   >
-                    📂 Browse Root
+                    <FolderOpen className="w-4 h-4" /> Browse Root
                   </button>
                 </div>
               </div>
@@ -455,7 +456,7 @@ const fetchBranchSha = async () => {
                       Linking...
                     </span>
                   ) : (
-                    "🔗 Link This Folder"
+                    <span className="inline-flex items-center gap-1.5"><Link2 className="w-4 h-4" /> Link This Folder</span>
                   )}
                 </button>
               </div>

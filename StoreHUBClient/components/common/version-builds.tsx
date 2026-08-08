@@ -6,6 +6,7 @@ import { formatRelativeTime } from "@/lib/api-utils";
 import type { BuildJob } from "@/types";
 import { buildApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
+import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
 
 interface VersionBuildsProps {
   slug: string;
@@ -33,7 +34,7 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
   if (error) {
     return (
       <div className="p-6 border border-red-600 dark:border-red-400">
-        <p className="font-mono text-sm text-red-600 dark:text-red-400">⚠️ {error}</p>
+        <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
       </div>
     );
   }
@@ -46,40 +47,40 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
     );
   }
 
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string): { label: string; icon: LucideIcon; color: string; border: string } => {
     switch (status) {
       case "queued":
         return {
           label: "Queued",
-          icon: "⏱️",
+          icon: Clock,
           color: "text-yellow-700 dark:text-yellow-400",
           border: "border-yellow-600",
         };
       case "running":
         return {
           label: "Building",
-          icon: "⚙️",
+          icon: Loader2,
           color: "text-blue-700 dark:text-blue-400",
           border: "border-blue-600",
         };
       case "success":
         return {
           label: "Success",
-          icon: "✅",
+          icon: CheckCircle2,
           color: "text-green-700 dark:text-green-400",
           border: "border-green-600",
         };
       case "error":
         return {
           label: "Failed",
-          icon: "❌",
+          icon: XCircle,
           color: "text-red-700 dark:text-red-400",
           border: "border-red-600",
         };
       default:
         return {
           label: status,
-          icon: "ℹ️",
+          icon: Info,
           color: "text-black dark:text-white",
           border: "border-black dark:border-white",
         };
@@ -126,7 +127,7 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
       {/* Rebuild Error Message */}
       {rebuildError && (
         <div className="border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 p-3">
-          <p className="font-mono text-xs text-red-600 dark:text-red-400">⚠️ {rebuildError}</p>
+          <p className="font-mono text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {rebuildError}</p>
         </div>
       )}
       
@@ -147,7 +148,8 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className={`font-mono text-sm font-bold ${statusConfig.color}`}>
+                    <span className={`font-mono text-sm font-bold flex items-center gap-1.5 ${statusConfig.color}`}>
+                      <statusConfig.icon className={`w-4 h-4 ${build.status === "running" ? "animate-spin" : ""}`} />
                       {statusConfig.label}
                     </span>
                     <span className="text-xs font-mono text-black/60 dark:text-white/60">
@@ -158,9 +160,7 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
                     <span className="text-xs font-mono text-black/60 dark:text-white/60">
                       {formatRelativeTime(build.createdAt)}
                     </span>
-                    <span className="text-sm">
-                      {isExpanded ? "▼" : "▶"}
-                    </span>
+                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </div>
                 </div>
               </button>

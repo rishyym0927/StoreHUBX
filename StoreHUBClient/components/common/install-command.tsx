@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { RepoLink } from "@/types";
 
 interface InstallCommandProps {
@@ -40,7 +41,7 @@ export function InstallCommand({ repoLink }: InstallCommandProps) {
           className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-mono border border-white dark:border-black bg-white dark:bg-black text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
           title="Copy to clipboard"
         >
-          {copied ? "✓ Copied" : "Copy"}
+          {copied ? (<span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Copied</span>) : "Copy"}
         </button>
       </div>
     </div>

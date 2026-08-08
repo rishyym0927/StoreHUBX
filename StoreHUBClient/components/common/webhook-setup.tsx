@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/store";
 import { webhookApi } from "@/lib/api";
+import { Check } from "lucide-react";
 
 interface WebhookSetupProps {
   slug: string;
@@ -65,7 +66,7 @@ export function WebhookSetup({ slug }: WebhookSetupProps) {
                     onClick={() => copy(config.webhookUrl, "url")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-mono border border-white dark:border-black bg-white dark:bg-black text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
                   >
-                    {copied === "url" ? "✓ Copied" : "Copy"}
+                    {copied === "url" ? (<span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Copied</span>) : "Copy"}
                   </button>
                 </div>
               </div>
@@ -79,7 +80,7 @@ export function WebhookSetup({ slug }: WebhookSetupProps) {
                     onClick={() => copy(config.webhookSecret, "secret")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-mono border border-white dark:border-black bg-white dark:bg-black text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
                   >
-                    {copied === "secret" ? "✓ Copied" : "Copy"}
+                    {copied === "secret" ? (<span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Copied</span>) : "Copy"}
                   </button>
                 </div>
               </div>

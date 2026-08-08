@@ -7,6 +7,7 @@ import { useMutation } from "@/hooks/use-api";
 import { parseFrameworks, parseTags, isValidComponentName } from "@/lib/api-utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import type { ComponentCreateRequest } from "@/types";
 
 export default function NewComponent() {
@@ -74,7 +75,7 @@ export default function NewComponent() {
         
         {error && (
           <div className="p-3 border-2 border-red-500/50 bg-red-500/10 rounded-xl text-sm">
-            <p className="text-red-600 dark:text-red-400 font-medium">⚠️ {error}</p>
+            <p className="text-red-600 dark:text-red-400 font-medium flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
           </div>
         )}
         

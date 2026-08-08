@@ -1,5 +1,6 @@
 import { Component } from "@/types";
 import { formatDate } from "@/lib/api-utils";
+import { CheckCircle2 } from "lucide-react";
 
 interface ComponentMetadataProps {
   component: Component;
@@ -88,8 +89,8 @@ export function ComponentMetadata({ component, versionsCount = 0 }: ComponentMet
         <div className="flex items-center justify-between text-xs">
           <span className="font-mono text-black/60 dark:text-white/60">Status</span>
           {isLinked ? (
-            <span className="font-mono font-bold text-green-600 dark:text-green-400">
-              ✓ Linked
+            <span className="font-mono font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Linked
             </span>
           ) : (
             <span className="font-mono font-bold text-red-600 dark:text-red-400">

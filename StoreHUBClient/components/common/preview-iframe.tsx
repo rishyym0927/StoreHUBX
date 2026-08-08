@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { ImageOff, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 
 type Props = {
   url?: string | null;
@@ -72,7 +73,7 @@ export function PreviewIframe({ url, height = 520 }: Props) {
   if (!src) {
     return (
       <div className="border-2 border-black dark:border-white p-8 text-center bg-black/5 dark:bg-white/5">
-        <div className="text-4xl mb-3">🖼️</div>
+        <ImageOff className="w-10 h-10 mb-3 mx-auto stroke-1" />
         <p className="font-mono text-sm text-black/60 dark:text-white/60">
           No preview URL provided
         </p>
@@ -90,15 +91,15 @@ export function PreviewIframe({ url, height = 520 }: Props) {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
             <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
           </div>
-          <span className="truncate text-xs font-mono text-white dark:text-black">
-            {isLoading ? '⏳ Loading preview...' : '✨ Live Preview'}
+          <span className="truncate text-xs font-mono text-white dark:text-black flex items-center gap-1.5">
+            {isLoading ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading preview...</>) : (<><Sparkles className="w-3.5 h-3.5" /> Live Preview</>)}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {loadError && (
-            <span className="text-xs font-mono text-red-400 dark:text-red-600">
-              ⚠️ Error
+            <span className="text-xs font-mono text-red-400 dark:text-red-600 flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" /> Error
             </span>
           )}
           <a 
@@ -114,8 +115,8 @@ export function PreviewIframe({ url, height = 520 }: Props) {
       
       {loadError && (
         <div className="p-6 border-b-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
-          <p className="font-mono font-bold text-red-600 dark:text-red-400 mb-2">
-            ⚠️ Preview Failed to Load
+          <p className="font-mono font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" /> Preview Failed to Load
           </p>
           <p className="text-xs font-mono text-red-600 dark:text-red-400 mb-3">
             {loadError}

@@ -2,6 +2,7 @@
 "use client";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -17,9 +18,7 @@ export function ThemeToggle() {
       aria-label="Toggle theme"
     >
       <span className="hidden sm:inline">{checked ? "Dark" : "Light"}</span>
-      <span className="text-base" aria-hidden="true">
-        {checked ? "🌙" : "☀️"}
-      </span>
+      {checked ? <Moon className="w-4 h-4" aria-hidden="true" /> : <Sun className="w-4 h-4" aria-hidden="true" />}
     </button>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { versionApi, githubApi } from "@/lib/api";
 import { WebhookSetup } from "@/components/common/webhook-setup";
+import { AlertTriangle, CheckCircle2, Zap } from "lucide-react";
 import type { Component, ComponentVersion, AutoDeployRequest } from "@/types";
 
 interface AutoDeployProps {
@@ -128,22 +129,22 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
 
           {error && (
             <div className="mb-3 p-3 border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
-              <p className="text-sm font-mono text-red-600 dark:text-red-400">⚠️ {error}</p>
+              <p className="text-sm font-mono text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
             </div>
           )}
 
           {success && (
             <div className="mb-3 p-3 border border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-950">
-              <p className="text-sm font-mono text-green-600 dark:text-green-400">
-                ✓ Version deployed successfully! Reloading...
+              <p className="text-sm font-mono text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> Version deployed successfully! Reloading...
               </p>
             </div>
           )}
 
           {hasNewCommit && latestCommit && (
             <div className="mb-3 p-3 border border-yellow-600 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-950">
-              <p className="text-sm font-mono text-yellow-800 dark:text-yellow-200">
-                🆕 New commit detected:{" "}
+              <p className="text-sm font-mono text-yellow-800 dark:text-yellow-200 flex items-center gap-1.5">
+                <Zap className="w-4 h-4 shrink-0" /> New commit detected:{" "}
                 <span className="font-mono">{latestCommit.substring(0, 7)}</span>
               </p>
             </div>
@@ -151,8 +152,8 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
 
           {!hasNewCommit && latestCommit && !checking && (
             <div className="mb-3 p-3 border border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-950">
-              <p className="text-sm font-mono text-green-600 dark:text-green-400">
-                ✓ Up to date with latest commit:{" "}
+              <p className="text-sm font-mono text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> Up to date with latest commit:{" "}
                 <span className="font-mono">{latestCommit.substring(0, 7)}</span>
               </p>
             </div>

@@ -11,6 +11,7 @@ import { ComponentComments } from "@/components/common/component-comments";
 import { ComponentRatings } from "@/components/common/component-ratings";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
+import { CheckCircle2 } from "lucide-react";
 
 import type { Component, ComponentVersion, User } from "@/types";
 
@@ -194,8 +195,8 @@ export default async function ComponentDetail({
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono text-black/60 dark:text-white/60">Status</span>
                       {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo ? (
-                        <span className="font-mono font-bold text-green-600 dark:text-green-400">
-                          ✓ Linked
+                        <span className="font-mono font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Linked
                         </span>
                       ) : (
                         <span className="font-mono font-bold text-red-600 dark:text-red-400">

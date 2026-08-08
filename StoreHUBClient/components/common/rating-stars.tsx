@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Star } from "lucide-react";
 
 interface RatingStarsProps {
   rating: number;
@@ -11,9 +12,9 @@ interface RatingStarsProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<RatingStarsProps["size"]>, string> = {
-  sm: "text-sm",
-  md: "text-lg",
-  lg: "text-2xl",
+  sm: "w-3.5 h-3.5",
+  md: "w-5 h-5",
+  lg: "w-7 h-7",
 };
 
 export function RatingStars({
@@ -29,22 +30,20 @@ export function RatingStars({
   return (
     <div className="flex items-center gap-1.5 font-mono">
       <div
-        className={`flex ${SIZE_CLASSES[size]} ${interactive ? "cursor-pointer" : ""}`}
+        className={`flex gap-0.5 ${interactive ? "cursor-pointer" : ""}`}
         onMouseLeave={() => interactive && setHovered(null)}
       >
         {[1, 2, 3, 4, 5].map((star) => (
-          <span
+          <Star
             key={star}
             onMouseEnter={() => interactive && setHovered(star)}
             onClick={() => interactive && onRate?.(star)}
-            className={
+            className={`${SIZE_CLASSES[size]} ${
               star <= Math.round(displayValue)
-                ? "text-black dark:text-white"
-                : "text-black/20 dark:text-white/20"
-            }
-          >
-            ★
-          </span>
+                ? "fill-black text-black dark:fill-white dark:text-white"
+                : "fill-black/20 text-black/20 dark:fill-white/20 dark:text-white/20"
+            }`}
+          />
         ))}
       </div>
       {typeof count === "number" && (

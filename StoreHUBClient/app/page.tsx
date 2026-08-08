@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/store";
 import { componentApi, userApi, versionApi, previewApi } from "@/lib/api";
 import { PreviewIframe } from "@/components/common/preview-iframe";
 import { ComponentCard } from "@/components/common/component-card";
+import { Palette, Sparkles, Star } from "lucide-react";
 import type { Component, UserProfileResponse, ComponentVersion } from "@/types";
 
 // Featured Component Card with Live Preview
@@ -77,7 +78,7 @@ function FeaturedComponentCard({ component }: { component: Component }) {
             <PreviewIframe url={previewUrl} height={600} />
           ) : (
             <div className="p-16 text-center">
-              <div className="text-6xl mb-6">🎨</div>
+              <Palette className="w-16 h-16 mb-6 mx-auto stroke-1" />
               <div className="text-2xl font-bold mb-3">No Preview Available</div>
               <p className="text-sm font-mono text-black/60 dark:text-white/60 mb-8 max-w-md mx-auto">
                 This component doesn&apos;t have a published version yet
@@ -336,7 +337,7 @@ export default function Home() {
       <section className="space-y-6">
         <div className="flex items-center justify-between border-b-2 border-black dark:border-white pb-4">
           <div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-1">✨ Live Component Previews</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-1 flex items-center gap-2"><Sparkles className="w-7 h-7 md:w-8 md:h-8" /> Live Component Previews</h2>
             <p className="text-sm font-mono text-black/60 dark:text-white/60">
               See components in action • Click to explore details
             </p>
@@ -364,7 +365,7 @@ export default function Home() {
           </div>
         ) : components.length === 0 ? (
           <div className="border-2 border-black dark:border-white p-12 text-center">
-            <div className="text-6xl mb-6">🎨</div>
+            <Palette className="w-16 h-16 mb-6 mx-auto stroke-1" />
             <div className="font-bold text-2xl mb-3">No components yet</div>
             <div className="text-sm text-black/60 dark:text-white/60 font-mono mb-8 max-w-md mx-auto">
               {isMember
@@ -433,7 +434,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-white text-black dark:bg-black dark:text-white font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
               >
-                ⭐ Star on GitHub
+                <Star className="w-4 h-4" /> Star on GitHub
               </a>
             </div>
           </div>
