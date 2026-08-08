@@ -38,6 +38,7 @@ func main() {
 	}))
 	app.Use(recover.New())
 	app.Use(middleware.Logger())
+	app.Use(middleware.RateLimiter())
 	app.Get("/docs/*", swagger.HandlerDefault) // Visit http://localhost:8080/docs/index.html
 
 

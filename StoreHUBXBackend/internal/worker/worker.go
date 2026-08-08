@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/rishyym0927/storehubx/internal/db"
@@ -200,88 +199,3 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-func stringsEqualFold(a, b string) bool {
-	return len(a) == len(b) && (a == b || (len(a) > 0 && strings.EqualFold(a, b)))
-}
-
-// uploadFilesWithCorrectMimeTypes uploads all files from outDir with proper MIME types
-func (p *Processor) uploadFilesWithCorrectMimeTypes(ctx context.Context, jobID primitive.ObjectID, outDir, component, version string) (string, error) {
-	keyPrefix := fmt.Sprintf("components/%s/%s/", component, version)
-	var bundleURL string
-	fileCount := 0
-
-	err := filepath.Walk(outDir, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		rel, _ := filepath.Rel(outDir, path)
-		key := keyPrefix + filepath.ToSlash(rel)
-
-		// Get correct MIME type based on file extension
-		ext := strings.ToLower(filepath.Ext(path))
-		var contentType string
-		switch ext {
-		case ".js", ".mjs":
-			contentType = "application/javascript"
-		case ".css":
-			contentType = "text/css"
-		case ".html", ".htm":
-			contentType = "text/html"
-		case ".json":
-			contentType = "application/json"
-		case ".png":
-			contentType = "image/png"
-		case ".jpg", ".jpeg":
-			contentType = "image/jpeg"
-		case ".gif":
-			contentType = "image/gif"
-		case ".svg":
-			contentType = "image/svg+xml"
-		case ".woff":
-			contentType = "font/woff"
-		case ".woff2":
-			contentType = "font/woff2"
-		case ".ttf":
-			contentType = "font/ttf"
-		case ".eot":
-			contentType = "application/vnd.ms-fontobject"
-		case ".ico":
-			contentType = "image/x-icon"
-		default:
-			contentType = "application/octet-stream"
-		}
-
-		p.logPush(ctx, jobID, fmt.Sprintf("[UPLOAD] %s → %s (Content-Type: %s)", rel, key, contentType))
-
-		url, err := p.uploader.PutFile(ctx, key, path, contentType)
-		if err != nil {
-			p.logPush(ctx, jobID, fmt.Sprintf("[ERROR] Failed to upload %s: %v", rel, err))
-			return fmt.Errorf("upload %s: %w", rel, err)
-		}
-
-		fileCount++
-		if stringsEqualFold(rel, "index.html") {
-			bundleURL = url
-			p.logPush(ctx, jobID, fmt.Sprintf("[INFO] Bundle URL set to: %s", url))
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	p.logPush(ctx, jobID, fmt.Sprintf("[SUCCESS] Uploaded %d files", fileCount))
-
-	if bundleURL == "" {
-		bundleURL = os.Getenv("S3_PUBLIC_BASE_URL") + "/" + keyPrefix + "index.html"
-		p.logPush(ctx, jobID, fmt.Sprintf("[INFO] No index.html found, using default URL: %s", bundleURL))
-	}
-
-	return bundleURL, nil
-}

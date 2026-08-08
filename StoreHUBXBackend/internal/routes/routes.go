@@ -7,8 +7,6 @@ import (
 	"github.com/rishyym0927/storehubx/internal/handlers"
 	"github.com/rishyym0927/storehubx/internal/middleware"
 
-	// NOTE: ensure your handlers file is in: internal/github/handlers.go
-	// and its package is: package githubapi
 	githubapi "github.com/rishyym0927/storehubx/internal/github"
 )
 
