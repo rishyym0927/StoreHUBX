@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useComponents } from "@/hooks/use-api";
 import { ComponentCard } from "@/components/common/component-card";
 import { Pagination } from "@/components/common/pagination";
+import { ComponentCardSkeleton } from "@/components/common/component-card-skeleton";
 import { useAuth } from "@/lib/store";
 import { AlertTriangle, Search } from "lucide-react";
 import type { ComponentsQueryParams } from "@/types";
@@ -163,9 +164,10 @@ export default function ComponentsPage() {
         </div>
 
         {loading ? (
-          <div className="p-12 border-2 border-black dark:border-white text-center">
-            <div className="inline-block w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin mb-3" />
-            <div className="text-sm font-mono text-black/60 dark:text-white/60">Loading components...</div>
+          <div className="grid gap-6">
+            {Array.from({ length: Math.min(itemsPerPage, 10) }, (_, i) => (
+              <ComponentCardSkeleton key={i} />
+            ))}
           </div>
         ) : components.length === 0 ? (
           <div className="p-12 border-2 border-black dark:border-white text-center space-y-4">
