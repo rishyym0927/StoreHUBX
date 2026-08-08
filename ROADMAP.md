@@ -68,7 +68,8 @@ The frontend already has an intentional "brutalist" black/white design system (T
   - Confirmed `postcss.config.mjs` loads Tailwind v4 purely via the `@tailwindcss/postcss` plugin with no `@config` directive in `globals.css`, so `tailwind.config.js` was dead config. Deleted it; verified the dev server still starts and serves the page correctly.
 - [x] **23. Broaden loading/empty states beyond the single pulse skeleton** — Browse grid and profile pages currently show a minimal centered emoji+text empty state; add skeleton cards matching the real card's border/shadow shape for a less jarring loading flash.
   - Extracted `components/common/component-card-skeleton.tsx` (matches `component-card.tsx`'s real border/shadow shell) and swapped it in for the bare spinner on the Browse page's loading state. Empty-state icons on Browse/`me`/`users/[id]` were already switched from emoji to lucide icons in item 20.
-- [ ] **24. Align `app/users/[id]/page.tsx` with `lib/api.ts`** — it currently hand-rolls its own fetch/error parsing instead of using the existing `userApi` client used elsewhere, which is both a consistency and a maintainability issue.
+- [x] **24. Align `app/users/[id]/page.tsx` with `lib/api.ts`** — it currently hand-rolls its own fetch/error parsing instead of using the existing `userApi` client used elsewhere, which is both a consistency and a maintainability issue.
+  - Replaced the hand-rolled `fetch`/error-parsing with `userApi.getProfileById`, matching the pattern already used in the component detail page. Also gave `getProfileById` an optional `authToken` param and passed the viewer's token through, so item 14's OptionalAuth-gated private/collaborator components actually surface for a logged-in viewer instead of the request always going out anonymous.
 
 ---
 

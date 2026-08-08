@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ApiError } from "@/lib/api";
+import { userApi, ApiError } from "@/lib/api";
 import { Badge } from "@/components/common/badge";
+import { useAuth } from "@/lib/store";
 import type { UserProfileResponse, Component } from "@/types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
 export default function UserProfile() {
   const params = useParams();
   const userId = params.id as string;
-  
+  const token = useAuth((s) => s.token);
+
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,43 +23,13 @@ export default function UserProfile() {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await fetch(`${API_BASE}/users/${userId}`, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-        });
 
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          let errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
-          
-          try {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.error) {
-              errorMessage = errorJson.error;
-            } else if (errorJson.message) {
-              errorMessage = errorJson.message;
-            }
-          } catch {
-            // Use raw text
-          }
-          
-          throw new ApiError(response.status, response.statusText, errorMessage);
-        }
-
-        const text = await response.text();
-        const json = JSON.parse(text);
-        
-        // Normalize response structure
-        const data = json?.success && json?.data !== undefined ? json.data : json;
+        const data = await userApi.getProfileById(userId, token ?? undefined);
         setProfile(data);
-        console.log("User profile data:", data);
       } catch (err) {
         console.error("User profile fetch error:", err);
         if (err instanceof ApiError) {
@@ -73,7 +43,7 @@ export default function UserProfile() {
     }
 
     fetchUserProfile();
-  }, [userId]);
+  }, [userId, token]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">

@@ -549,9 +549,10 @@ export const userApi = {
   /**
    * Get user profile by provider ID (public, no auth required)
    */
-  async getProfileById(providerId: string) {
+  async getProfileById(providerId: string, authToken?: string) {
     const response = await apiFetch<UserProfileResponse>(
-      `/users/${providerId}`
+      `/users/${providerId}`,
+      { authToken }
     );
     return response;
   },
