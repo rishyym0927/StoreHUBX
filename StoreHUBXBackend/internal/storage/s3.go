@@ -604,8 +604,14 @@ func (u *S3Uploader) FixMimeTypesForComponent(ctx context.Context, component, ve
 }
 
 // publicURL builds a clean public URL and avoids doubling the bucket in the path.
+// If CDN_BASE_URL is set, bundle URLs are built from that base instead of the
+// direct MinIO/S3 origin, so built component bundles get served through
+// whatever CDN is configured to pull from that origin.
 func (u *S3Uploader) publicURL(key string) string {
 	base := u.publicBase
+	if cdnBase := os.Getenv("CDN_BASE_URL"); cdnBase != "" {
+		base = cdnBase
+	}
 	cleanKey := strings.TrimLeft(key, "/")
 
 	// ensure scheme for parsing
