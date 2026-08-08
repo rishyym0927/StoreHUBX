@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
+	"github.com/rishyym0927/storehubx/internal/metrics"
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/storage"
 	"go.mongodb.org/mongo-driver/bson"
@@ -120,6 +121,7 @@ func (p *Processor) heartbeatLoop(ctx context.Context) {
 				CountDocuments(ctx, bson.M{"status": models.BuildQueued})
 			if err == nil {
 				fmt.Printf("[WORKER] Heartbeat: queued=%d\n", count)
+				metrics.BuildQueueDepth.Set(float64(count))
 			}
 		}
 	}
@@ -293,6 +295,8 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		"artifacts": models.BuildArtifact{BundleURL: bundleURL},
 	})
 	p.logPush(ctx, jobID, "build complete")
+	metrics.BuildsTotal.WithLabelValues("success").Inc()
+	metrics.BuildDuration.Observe(time.Since(jobStartTime(job)).Seconds())
 
 	// 7) Patch version with previewUrl + set build state
 	verCol := db.Client.Database(os.Getenv("MONGO_DB")).Collection("component_versions")
@@ -330,6 +334,8 @@ func (p *Processor) fail(ctx context.Context, job *models.BuildJob, err error) {
 	}
 
 	p.setStatus(ctx, job.ID, models.BuildError, bson.M{"attempts": attempts, "endedAt": time.Now()})
+	metrics.BuildsTotal.WithLabelValues("error").Inc()
+	metrics.BuildDuration.Observe(time.Since(jobStartTime(job)).Seconds())
 
 	// Update component version status to error
 	verCol := db.Client.Database(os.Getenv("MONGO_DB")).Collection("component_versions")
@@ -337,6 +343,14 @@ func (p *Processor) fail(ctx context.Context, job *models.BuildJob, err error) {
 		bson.M{"componentId": job.ComponentID, "version": job.Version},
 		bson.M{"$set": bson.M{"buildState": models.VersionBuildError}},
 	)
+}
+
+// jobStartTime returns when this attempt began, for build-duration metrics.
+func jobStartTime(job *models.BuildJob) time.Time {
+	if job.StartedAt != nil {
+		return *job.StartedAt
+	}
+	return job.CreatedAt
 }
 
 func firstNonEmpty(vals ...string) string {

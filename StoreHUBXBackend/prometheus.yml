@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: storehubx-api
+    static_configs:
+      # host.docker.internal resolves to the host machine from inside the
+      # prometheus container — the API runs on the host (`go run cmd/main.go`),
+      # not as its own compose service.
+      - targets: ["host.docker.internal:8080"]
