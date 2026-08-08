@@ -14,7 +14,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
-        className="border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+        className="brutal-lift border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none"
       >
         ← PREV
       </button>
@@ -45,10 +45,10 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
             <button
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
-              className={`border-2 px-5 py-3 text-sm font-mono font-bold transition-all ${
+              className={`border-2 px-5 py-3 text-sm font-mono font-bold ${
                 pageNum === currentPage
                   ? "border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]"
-                  : "border-black dark:border-white hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none"
+                  : "brutal-lift border-black dark:border-white"
               }`}
             >
               {pageNum}
@@ -60,7 +60,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages}
-        className="border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+        className="brutal-lift border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none"
       >
         NEXT →
       </button>

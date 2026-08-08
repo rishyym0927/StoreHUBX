@@ -2,6 +2,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/common/theme-provider";
 import { Navbar } from "@/components/common/navbar";
+import { PageTransition } from "@/components/common/page-transition";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
             <Navbar />
-            <main className="py-6 md:py-6 lg:py-6 animate-in fade-in duration-700">{children}</main>
+            <main className="py-6 md:py-6 lg:py-6">
+              <PageTransition>{children}</PageTransition>
+            </main>
           </div>
         </ThemeProvider>
       </body>

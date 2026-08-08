@@ -97,3 +97,149 @@ html, body {
                     linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
 }
 
+/* ---------------------------------------------------------------- */
+/* Phase 5: unified hover/press physics, entrance & feedback motion */
+/* ---------------------------------------------------------------- */
+
+/* Item 31 — smooth the light/dark flip everywhere by default.
+   Lives in @layer base so any element's own transition-* utility
+   (in the utilities layer) still wins and sets its own timing. */
+@layer base {
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: ease-out;
+  }
+}
+
+@layer utilities {
+  /* Item 25/27 — the "primary" brutalist hover: diagonal lift + hard
+     shadow that grows in smoothly (explicit transition list, not
+     transition-all, so the offset genuinely tweens instead of snapping). */
+  .brutal-lift {
+    --lift: 4px;
+    transition: transform 150ms ease-out, box-shadow 150ms ease-out,
+      background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out;
+  }
+  .brutal-lift:hover {
+    transform: translate(calc(var(--lift) * -1), calc(var(--lift) * -1));
+    box-shadow: var(--lift) var(--lift) 0px 0px rgba(0, 0, 0, 1);
+  }
+  .dark .brutal-lift:hover {
+    box-shadow: var(--lift) var(--lift) 0px 0px rgba(255, 255, 255, 1);
+  }
+  .brutal-lift:active {
+    transform: translate(0, 0);
+    box-shadow: none;
+  }
+  .brutal-lift-lg {
+    --lift: 8px;
+  }
+
+  /* Item 25 — the "secondary" hover for compact nav/utility controls. */
+  .brutal-scale {
+    transition: transform 150ms ease-out, background-color 200ms ease-out,
+      border-color 200ms ease-out, color 200ms ease-out;
+  }
+  .brutal-scale:hover {
+    transform: scale(1.05);
+  }
+  .brutal-scale:active {
+    transform: scale(0.95);
+  }
+
+  /* Item 26 — staggered fade/slide entrance for grid & list content. */
+  @keyframes fade-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .stagger-in {
+    opacity: 0;
+    animation: fade-slide-up 420ms ease-out forwards;
+    animation-delay: calc(var(--stagger-index, 0) * 60ms);
+  }
+
+  /* Item 28 — page-level route transition. */
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-page-in {
+    animation: page-in 260ms ease-out;
+  }
+
+  /* Item 29 — shimmer sweep for loading skeletons, replacing the flat pulse. */
+  @keyframes shimmer-sweep {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.06) 20%,
+      rgba(0, 0, 0, 0.16) 40%,
+      rgba(0, 0, 0, 0.06) 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.6s ease-in-out infinite;
+  }
+  .dark .skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.06) 20%,
+      rgba(255, 255, 255, 0.2) 40%,
+      rgba(255, 255, 255, 0.06) 60%
+    );
+  }
+
+  /* Item 30 — tactile "punch" confirmation for like/rate actions. */
+  @keyframes brutal-punch {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(0.92);
+    }
+    70% {
+      transform: scale(1.08);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .animate-punch {
+    animation: brutal-punch 320ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in,
+  .animate-page-in,
+  .skeleton-shimmer,
+  .animate-punch {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .brutal-lift,
+  .brutal-scale,
+  *, *::before, *::after {
+    transition: none !important;
+  }
+}
+

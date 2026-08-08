@@ -10,11 +10,7 @@ import type { Component, UserProfileResponse } from "@/types";
 
 // Featured Component Card
 function FeaturedComponentCard({ component }: { component: Component }) {
-  return (
-    <div className="border border-black dark:border-white transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)]">
-      <ComponentCard component={component} />
-    </div>
-  );
+  return <ComponentCard component={component} />;
 }
 
 export default function Home() {
@@ -135,13 +131,13 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link
                   href="/components/new"
-                  className="border-2 border-black dark:border-white px-8 py-4 font-mono font-bold text-sm bg-black text-white dark:bg-white dark:text-black transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                  className="brutal-lift brutal-lift-lg border-2 border-black dark:border-white px-8 py-4 font-mono font-bold text-sm bg-black text-white dark:bg-white dark:text-black"
                 >
                   + CREATE COMPONENT
                 </Link>
                 <Link
                   href="/components"
-                  className="border-2 border-black dark:border-white bg-white text-black dark:bg-black dark:text-white px-8 py-4 font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                  className="brutal-lift brutal-lift-lg border-2 border-black dark:border-white bg-white text-black dark:bg-black dark:text-white px-8 py-4 font-mono font-bold text-sm"
                 >
                   BROWSE ALL
                 </Link>
@@ -159,7 +155,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <a
                   href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
-                  className="flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                  className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
@@ -168,7 +164,7 @@ export default function Home() {
                 </a>
                 <Link
                   href="/components"
-                  className="border-2 border-black dark:border-white bg-white text-black dark:bg-black dark:text-white px-8 py-4 font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                  className="brutal-lift brutal-lift-lg border-2 border-black dark:border-white bg-white text-black dark:bg-black dark:text-white px-8 py-4 font-mono font-bold text-sm"
                 >
                   EXPLORE COMPONENTS
                 </Link>
@@ -264,7 +260,7 @@ export default function Home() {
           </div>
           <Link
             href="/components"
-            className="border-2 border-black dark:border-white px-4 py-2 text-sm font-mono transition-transform hover:scale-105 active:scale-95 hidden sm:block"
+            className="brutal-scale border-2 border-black dark:border-white px-4 py-2 text-sm font-mono hidden sm:block"
           >
             View All →
           </Link>
@@ -273,13 +269,13 @@ export default function Home() {
         {loadingComps ? (
           <div className="space-y-8">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="border-2 border-black dark:border-white animate-pulse">
+              <div key={i} className="border-2 border-black dark:border-white">
                 <div className="p-5 border-b border-black dark:border-white">
-                  <div className="h-8 bg-black/10 dark:bg-white/10 mb-3 w-1/3"></div>
-                  <div className="h-4 bg-black/10 dark:bg-white/10 mb-2"></div>
-                  <div className="h-4 bg-black/10 dark:bg-white/10 w-2/3"></div>
+                  <div className="h-8 skeleton-shimmer mb-3 w-1/3"></div>
+                  <div className="h-4 skeleton-shimmer mb-2"></div>
+                  <div className="h-4 skeleton-shimmer w-2/3"></div>
                 </div>
-                <div className="h-96 bg-black/5 dark:bg-white/5"></div>
+                <div className="h-96 skeleton-shimmer"></div>
               </div>
             ))}
           </div>
@@ -295,14 +291,14 @@ export default function Home() {
             {isMember ? (
               <Link
                 href="/components/new"
-                className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95"
+                className="brutal-scale inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black"
               >
                 + Create First Component
               </Link>
             ) : (
               <a
                 href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
-                className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black transition-transform hover:scale-105 active:scale-95"
+                className="brutal-scale inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black"
               >
                 Get Started
               </a>
@@ -310,15 +306,17 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-8">
-            {components.slice(0, 6).map((c) => (
-              <FeaturedComponentCard key={c.id || c.slug} component={c} />
+            {components.slice(0, 6).map((c, i) => (
+              <div key={c.id || c.slug} className="stagger-in" style={{ "--stagger-index": i } as React.CSSProperties}>
+                <FeaturedComponentCard component={c} />
+              </div>
             ))}
 
             {/* View All Button */}
             <div className="text-center pt-4">
               <Link
                 href="/components"
-                className="inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono transition-transform hover:scale-105 active:scale-95 bg-white text-black dark:bg-black dark:text-white"
+                className="brutal-scale inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono bg-white text-black dark:bg-black dark:text-white"
               >
                 Explore All {components.length} Components →
               </Link>
@@ -341,7 +339,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <a
                 href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
-                className="flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
@@ -352,7 +350,7 @@ export default function Home() {
                 href="https://github.com/rishyym0927/StoreHUBX"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-white text-black dark:bg-black dark:text-white font-mono font-bold text-sm transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-white text-black dark:bg-black dark:text-white font-mono font-bold text-sm"
               >
                 <Star className="w-4 h-4" /> Star on GitHub
               </a>

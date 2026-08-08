@@ -84,9 +84,9 @@ export default function ComponentsPage() {
       {error && (
         <div className="p-6 border-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
           <p className="text-sm font-mono text-red-700 dark:text-red-300 font-bold mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
-          <button 
+          <button
             onClick={refetch}
-            className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-all hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
+            className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
           >
             Try Again
           </button>
@@ -135,14 +135,14 @@ export default function ComponentsPage() {
         <div className="flex gap-3 pt-2">
           <button
             onClick={handleFilterChange}
-            className="border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-6 py-3 text-sm font-mono font-bold transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none"
+            className="brutal-lift border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-6 py-3 text-sm font-mono font-bold"
           >
             Apply Filters
           </button>
           {hasActiveFilters && (
             <button
               onClick={handleClearFilters}
-              className="border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 active:shadow-none"
+              className="brutal-lift border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold"
             >
               Clear Filters
             </button>
@@ -188,13 +188,18 @@ export default function ComponentsPage() {
         ) : (
           <>
             <div className="grid gap-6">
-              {components.map((c) => (
-                <ComponentCard 
-                  key={c.id || c.slug} 
-                  component={c}
-                  showOwnerActions={true}
-                  currentUserId={loggedInUserId}
-                />
+              {components.map((c, i) => (
+                <div
+                  key={c.id || c.slug}
+                  className="stagger-in"
+                  style={{ "--stagger-index": i } as React.CSSProperties}
+                >
+                  <ComponentCard
+                    component={c}
+                    showOwnerActions={true}
+                    currentUserId={loggedInUserId}
+                  />
+                </div>
               ))}
             </div>
 

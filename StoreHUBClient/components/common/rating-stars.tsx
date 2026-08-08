@@ -25,7 +25,15 @@ export function RatingStars({
   onRate,
 }: RatingStarsProps) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [punched, setPunched] = useState<number | null>(null);
   const displayValue = hovered ?? rating;
+
+  const handleRate = (star: number) => {
+    if (!interactive) return;
+    onRate?.(star);
+    setPunched(star);
+    setTimeout(() => setPunched(null), 320);
+  };
 
   return (
     <div className="flex items-center gap-1.5 font-mono">
@@ -37,8 +45,10 @@ export function RatingStars({
           <Star
             key={star}
             onMouseEnter={() => interactive && setHovered(star)}
-            onClick={() => interactive && onRate?.(star)}
+            onClick={() => handleRate(star)}
             className={`${SIZE_CLASSES[size]} ${
+              interactive && punched !== null && star <= punched ? "animate-punch" : ""
+            } ${
               star <= Math.round(displayValue)
                 ? "fill-black text-black dark:fill-white dark:text-white"
                 : "fill-black/20 text-black/20 dark:fill-white/20 dark:text-white/20"

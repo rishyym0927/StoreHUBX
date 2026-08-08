@@ -18,7 +18,7 @@ export function ComponentCard({
   const isOwner = currentUserId && currentUserId === component.ownerId;
 
   return (
-    <div className="group border-2 border-black dark:border-white transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:active:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+    <div className="brutal-lift brutal-lift-lg group border-2 border-black dark:border-white">
       <div className="p-6 space-y-4">
         {/* Header Section */}
         <div className="flex items-start justify-between gap-4">

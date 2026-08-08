@@ -14,7 +14,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(checked ? "light" : "dark")}
-      className="flex items-center gap-2 text-xs font-mono border border-black dark:border-white px-2 sm:px-3 py-1 transition-transform hover:scale-105 active:scale-95"
+      className="brutal-scale flex items-center gap-2 text-xs font-mono border border-black dark:border-white px-2 sm:px-3 py-1"
       aria-label="Toggle theme"
     >
       <span className="hidden sm:inline">{checked ? "Dark" : "Light"}</span>

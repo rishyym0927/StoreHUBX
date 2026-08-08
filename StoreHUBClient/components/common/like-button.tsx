@@ -18,6 +18,7 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
+  const [punch, setPunch] = useState(false);
 
   // Sync state once user auth hydrates from local storage
   useEffect(() => {
@@ -39,6 +40,8 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
     setIsLiked(!isLiked);
     setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     setIsLoading(true);
+    setPunch(true);
+    setTimeout(() => setPunch(false), 320);
 
     try {
       await componentApi.toggleLike(slug, token);
@@ -58,11 +61,12 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
       onClick={handleLike}
       disabled={isLoading}
       className={`
-        flex items-center gap-2 px-4 py-2 border-2 border-black dark:border-white font-mono font-bold uppercase tracking-wider text-sm transition-all
+        brutal-lift flex items-center gap-2 px-4 py-2 border-2 border-black dark:border-white font-mono font-bold uppercase tracking-wider text-sm
+        ${punch ? "animate-punch" : ""}
         ${
           isLiked
-            ? "bg-black text-white dark:bg-white dark:text-black shadow-none translate-y-1"
-            : "bg-white text-black dark:bg-black dark:text-white hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]"
+            ? "bg-black text-white dark:bg-white dark:text-black"
+            : "bg-white text-black dark:bg-black dark:text-white"
         }
       `}
     >
