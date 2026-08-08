@@ -54,7 +54,8 @@ Working list of fixes, improvements, and features, ordered for execution. Work t
 
 The frontend already has an intentional "brutalist" black/white design system (Tailwind v4, hand-rolled — no shadcn/component library): 2px solid borders, hard offset drop-shadows on hover (`shadow-[8px_8px_0px_0px_...]` + lift), bold uppercase mono-font headings, sharp corners. Dark mode is already fully implemented via `next-themes` throughout. None of the items below are about changing that look — they're bugs, duplication, and consistency gaps found by reading the actual page/component files, to be fixed *within* the existing style.
 
-- [ ] **17. Fix hardcoded `loggedInUserId` placeholder** in `app/components/page.tsx` (currently `"user-id-placeholder"`, marked TODO) — owner-only actions on the Browse page likely never activate correctly because of this.
+- [x] **17. Fix hardcoded `loggedInUserId` placeholder** in `app/components/page.tsx` (currently `"user-id-placeholder"`, marked TODO) — owner-only actions on the Browse page likely never activate correctly because of this.
+  - Replaced with `useAuth().user?.id`, mirroring the working pattern already used on `/me`.
 - [ ] **18. Extract a reusable Badge/Tag chip component** — tag pills and framework chips are currently one-off `<span>` markup repeated across `component-card.tsx`, `[slug]/page.tsx`, and `components/page.tsx`; consolidate into one component using the existing border/mono-font style.
 - [ ] **19. Dedupe pagination** — `components/common/pagination.tsx` already exists but `app/components/page.tsx` and `(private)/me/page.tsx` each hand-roll their own near-identical pagination controls instead of using it.
 - [ ] **20. Replace ad-hoc emoji icons with a consistent icon set** — cards/pages mix emoji (🔍📦🎨⭐📍) with inline SVGs (GitHub/branch/commit icons); pick one (e.g. `lucide-react`, thin-stroke icons read well against the mono/brutalist style) and use it everywhere.

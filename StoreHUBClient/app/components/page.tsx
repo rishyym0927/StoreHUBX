@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useComponents } from "@/hooks/use-api";
 import { ComponentCard } from "@/components/common/component-card";
+import { useAuth } from "@/lib/store";
 import type { ComponentsQueryParams } from "@/types";
 
 export default function ComponentsPage() {
@@ -61,8 +62,8 @@ export default function ComponentsPage() {
 
   const hasActiveFilters = searchQuery || frameworkFilter || tagsFilter;
 
-  // TODO: Replace with actual logged-in user ID from auth context
-  const loggedInUserId = "user-id-placeholder";
+  const { user } = useAuth();
+  const loggedInUserId = user?.id;
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-12">
