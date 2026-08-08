@@ -53,7 +53,6 @@ func CreateComponent(c *fiber.Ctx) error {
 	now := time.Now()
 	body.CreatedAt = now
 	body.UpdatedAt = now
-	body.Slug = strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
 	body.LikedBy = []string{}
 	body.UniqueVisitors = []string{}
 	if body.Visibility != "private" {
@@ -67,6 +66,20 @@ func CreateComponent(c *fiber.Ctx) error {
 	defer cancel()
 
 	col := db.Client.Database("storehub").Collection("components")
+
+	baseSlug := strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
+	body.Slug = baseSlug
+	for suffix := 2; suffix <= 50; suffix++ {
+		count, err := col.CountDocuments(ctx, bson.M{"slug": body.Slug})
+		if err != nil {
+			return utils.Error(c, 500, "failed to validate slug")
+		}
+		if count == 0 {
+			break
+		}
+		body.Slug = fmt.Sprintf("%s-%d", baseSlug, suffix)
+	}
+
 	if _, err := col.InsertOne(ctx, body); err != nil {
 		return utils.Error(c, 500, "failed to insert component")
 	}

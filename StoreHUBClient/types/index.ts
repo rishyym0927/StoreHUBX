@@ -254,6 +254,7 @@ export interface RatingUpsertResponse {
 }
 
 export interface ComponentAnalytics {
+  id: string;
   slug: string;
   name: string;
   viewCount: number;

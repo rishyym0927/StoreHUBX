@@ -12,6 +12,7 @@ import (
 )
 
 type componentAnalytics struct {
+	ID            string  `json:"id"`
 	Slug          string  `json:"slug"`
 	Name          string  `json:"name"`
 	ViewCount     int     `json:"viewCount"`
@@ -54,6 +55,7 @@ func GetOwnerAnalytics(c *fiber.Ctx) error {
 
 		views := len(comp.UniqueVisitors)
 		results = append(results, componentAnalytics{
+			ID:            comp.ID.Hex(),
 			Slug:          comp.Slug,
 			Name:          comp.Name,
 			ViewCount:     views,

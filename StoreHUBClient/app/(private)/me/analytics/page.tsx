@@ -79,7 +79,7 @@ export default function AnalyticsPage() {
                 <div className="space-y-4">
                   {data.components.map((comp) => (
                     <div
-                      key={comp.slug}
+                      key={comp.id}
                       className="border-2 border-black dark:border-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
                       <div className="min-w-0">
