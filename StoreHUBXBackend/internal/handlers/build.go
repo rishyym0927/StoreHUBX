@@ -5,12 +5,30 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
+	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
+	"github.com/rishyym0927/storehubx/internal/worker"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// notifyWorker pushes the job id onto the Redis Stream a worker's
+// streamLoop is blocked on, so it's picked up immediately instead of
+// waiting for the next fallback poll tick. Best-effort: the BuildJob row
+// itself is the source of truth, so a dropped XADD just means this job
+// gets picked up by the slower Mongo poll instead of instantly.
+func notifyWorker(ctx context.Context, jobID primitive.ObjectID) {
+	if cache.Client == nil {
+		return
+	}
+	_ = cache.Client.XAdd(ctx, &redis.XAddArgs{
+		Stream: worker.BuildStreamKey,
+		Values: map[string]interface{}{"jobId": jobID.Hex()},
+	}).Err()
+}
 
 // POST /api/components/:slug/versions/:version/build
 func EnqueueBuild(c *fiber.Ctx) error {
@@ -67,6 +85,7 @@ func EnqueueBuild(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to enqueue build")
 	}
 	oid, _ := res.InsertedID.(primitive.ObjectID)
+	notifyWorker(ctx, oid)
 
 	// 4) Optionally update version build state => queued
 	_, _ = verCol.UpdateOne(ctx,

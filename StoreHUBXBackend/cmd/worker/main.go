@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/storage"
 	"github.com/rishyym0927/storehubx/internal/worker"
@@ -18,6 +19,7 @@ func main() {
 	config.LoadConfig()
 	db.Init(config.AppConfig.MongoURI)
 	defer db.Disconnect()
+	cache.Init()
 
 	uploader, err := storage.NewS3Uploader()
 	if err != nil {

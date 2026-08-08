@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/storage"
@@ -20,6 +23,15 @@ import (
 // network call or hung subprocess can't wedge this single-threaded
 // polling loop forever, blocking every job queued after it.
 const jobTimeout = 10 * time.Minute
+
+// BuildStreamKey/BuildStreamGroup back the Redis Streams queue that
+// EnqueueBuild pushes onto (internal/handlers/build.go) so a worker is
+// notified immediately instead of only discovering new jobs on the next
+// poll tick.
+const (
+	BuildStreamKey   = "builds:stream"
+	buildStreamGroup = "workers"
+)
 
 type Processor struct {
 	uploader storage.Uploader
@@ -73,30 +85,53 @@ func (p *Processor) claimQueued(ctx context.Context) (*models.BuildJob, error) {
 	return &job, nil
 }
 
+// Run drives the worker. When Redis is available, new jobs are picked up
+// immediately via a blocking read on the "builds:stream" Redis Stream
+// (pushed to by EnqueueBuild), with a slower Mongo poll running alongside
+// as a fallback sweep — it catches retries (which become "queued" again
+// without a fresh stream message) and any job whose XADD was dropped.
+// Without Redis, it falls back entirely to the original fast Mongo poll.
 func (p *Processor) Run(ctx context.Context) {
+	go p.heartbeatLoop(ctx)
+
+	if cache.Client != nil {
+		go p.pollLoop(ctx, 30*time.Second)
+		p.streamLoop(ctx)
+		return
+	}
+
 	pollMs, _ := strconv.Atoi(os.Getenv("JOB_POLL_INTERVAL_MS"))
 	if pollMs <= 0 {
 		pollMs = 1000
 	}
-	ticker := time.NewTicker(time.Duration(pollMs) * time.Millisecond)
-	defer ticker.Stop()
+	p.pollLoop(ctx, time.Duration(pollMs)*time.Millisecond)
+}
 
-	// Heartbeat ticker for logging (every 30 seconds)
+func (p *Processor) heartbeatLoop(ctx context.Context) {
 	heartbeatTicker := time.NewTicker(30 * time.Second)
 	defer heartbeatTicker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-heartbeatTicker.C:
-			// Log heartbeat with queued job count
 			count, err := db.Client.Database(os.Getenv("MONGO_DB")).
 				Collection("build_jobs").
 				CountDocuments(ctx, bson.M{"status": models.BuildQueued})
 			if err == nil {
 				fmt.Printf("[WORKER] Heartbeat: queued=%d\n", count)
 			}
+		}
+	}
+}
+
+func (p *Processor) pollLoop(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 			if job, err := p.claimQueued(ctx); err == nil && job != nil {
 				jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
@@ -105,6 +140,88 @@ func (p *Processor) Run(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// streamLoop blocks on Redis Streams for newly enqueued jobs. Each message
+// only carries a job id — claimSpecific still does the atomic Mongo
+// status flip, so a message that arrives for a job another path (e.g. the
+// fallback sweep) already claimed is simply a no-op ack.
+func (p *Processor) streamLoop(ctx context.Context) {
+	consumer := fmt.Sprintf("worker-%d", os.Getpid())
+
+	if err := cache.Client.XGroupCreateMkStream(ctx, BuildStreamKey, buildStreamGroup, "$").Err(); err != nil &&
+		!strings.Contains(err.Error(), "BUSYGROUP") {
+		fmt.Printf("[WORKER] failed to create stream consumer group: %v\n", err)
+	}
+
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+
+		res, err := cache.Client.XReadGroup(ctx, &redis.XReadGroupArgs{
+			Group:    buildStreamGroup,
+			Consumer: consumer,
+			Streams:  []string{BuildStreamKey, ">"},
+			Count:    1,
+			Block:    5 * time.Second,
+		}).Result()
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			continue // timeout (no new messages) or transient Redis error
+		}
+
+		for _, stream := range res {
+			for _, msg := range stream.Messages {
+				p.handleStreamMessage(ctx, msg)
+			}
+		}
+	}
+}
+
+func (p *Processor) handleStreamMessage(ctx context.Context, msg redis.XMessage) {
+	defer cache.Client.XAck(ctx, BuildStreamKey, buildStreamGroup, msg.ID)
+
+	jobIDHex, _ := msg.Values["jobId"].(string)
+	oid, err := primitive.ObjectIDFromHex(jobIDHex)
+	if err != nil {
+		return
+	}
+
+	job, err := p.claimSpecific(ctx, oid)
+	if err != nil || job == nil {
+		return
+	}
+
+	jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
+	p.process(jobCtx, job)
+	cancel()
+}
+
+func (p *Processor) claimSpecific(ctx context.Context, id primitive.ObjectID) (*models.BuildJob, error) {
+	var job models.BuildJob
+	now := time.Now()
+	filter := bson.M{
+		"_id":    id,
+		"status": models.BuildQueued,
+		"$or": []bson.M{
+			{"nextAttemptAt": bson.M{"$exists": false}},
+			{"nextAttemptAt": bson.M{"$lte": now}},
+		},
+	}
+	err := db.Client.Database(os.Getenv("MONGO_DB")).
+		Collection("build_jobs").
+		FindOneAndUpdate(ctx,
+			filter,
+			bson.M{"$set": bson.M{"status": models.BuildRunning, "startedAt": now, "updatedAt": now}},
+			options.FindOneAndUpdate().SetReturnDocument(options.After),
+		).Decode(&job)
+	if err != nil {
+		return nil, err
+	}
+	return &job, nil
 }
 
 func (p *Processor) process(ctx context.Context, job *models.BuildJob) {

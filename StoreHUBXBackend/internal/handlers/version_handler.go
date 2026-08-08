@@ -98,7 +98,10 @@ func AddVersion(c *fiber.Ctx) error {
 	}
 
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")
-	_, _ = jobCol.InsertOne(ctx, job)
+	jobRes, _ := jobCol.InsertOne(ctx, job)
+	if oid, ok := jobRes.InsertedID.(primitive.ObjectID); ok {
+		notifyWorker(ctx, oid)
+	}
 
 	return utils.Success(c, fiber.Map{
 		"status":  "version added",
@@ -242,6 +245,7 @@ func AutoDeploy(c *fiber.Ctx) error {
 	}
 
 	jobID, _ := jobRes.InsertedID.(primitive.ObjectID)
+	notifyWorker(ctx, jobID)
 
 	return utils.Success(c, fiber.Map{
 		"version": newVersion,
