@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "CGO_ENABLED=0 go build -o ./tmp/worker ./cmd/worker/main.go"
+  entrypoint = "./tmp/worker"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "docs", "grafana"]
+  exclude_regex = ["_test\\.go"]
+  delay = 300
+  stop_on_error = true
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true

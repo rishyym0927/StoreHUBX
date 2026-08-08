@@ -18,6 +18,28 @@ Ensure you have the following installed on your machine:
 
 ## 🚀 Installation & Running Locally
 
+### Quick start (recommended)
+
+From the repo root:
+
+```bash
+make install   # go mod download + npm install, scaffolds .env / .env.local if missing
+```
+
+Open `StoreHUBXBackend/.env` and fill in `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` (create an OAuth App at https://github.com/settings/developers), then:
+
+```bash
+make dev
+```
+
+This starts everything — Docker infra, the hot-reloading API, the hot-reloading worker, and the frontend — in one terminal. Logs are interleaved with timestamped `[api]`/`[worker]`/`[web]` prefixes; `Ctrl+C` stops everything. The Go API and worker hot-reload on save via [`air`](https://github.com/air-verse/air) (auto-installed on first run if missing).
+
+Before starting anything, `make dev` runs a preflight check (`make check`) that verifies required tools, the Docker daemon, `.env`/`.env.local` values (rejecting unset or placeholder secrets), and that ports 8080/3000/27017/9000/6379 are free — each problem is reported as a clear `✗ file: what's wrong. how to fix it` line instead of failing later with a cryptic runtime error. Run `make check` on its own any time to just validate your setup.
+
+Other targets: `make infra` (Docker services only), `make backend` (API + worker only), `make frontend` (Next.js only), `make stop` (stop Docker infra).
+
+If you'd rather run each piece in its own terminal for isolated logs, see the manual steps below.
+
 ### 1. Start External Services (Database, Storage, Cache, Observability)
 We use Docker to run MongoDB, MinIO, Redis, Prometheus, and Grafana locally.
 ```bash
