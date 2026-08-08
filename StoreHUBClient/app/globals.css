@@ -110,6 +110,16 @@ html, body {
     transition-duration: 200ms;
     transition-timing-function: ease-out;
   }
+
+  /* Item 35 — one crisp, high-contrast focus affordance for keyboard nav,
+     matching the site's 2px-border language instead of the browser default. */
+  :focus-visible {
+    outline: 2px solid black;
+    outline-offset: 2px;
+  }
+  .dark :focus-visible {
+    outline-color: white;
+  }
 }
 
 @layer utilities {

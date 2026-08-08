@@ -6,9 +6,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/common/protected-route";
 import { ComponentCard } from "@/components/common/component-card";
 import { Pagination } from "@/components/common/pagination";
+import { EmptyState } from "@/components/common/empty-state";
 import { useAuth } from "@/lib/store";
 import { userApi, ApiError } from "@/lib/api";
-import { MapPin, Link2, Star, Package } from "lucide-react";
+import { MapPin, Link2, Star, Package, AlertTriangle, LogIn } from "lucide-react";
 import type { UserProfileResponse } from "@/types";
 
 interface GithubPublicProfile {
@@ -114,33 +115,37 @@ export default function Me() {
 
           {/* Error State */}
           {error && !loading && (
-            <div className="border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 p-4 sm:p-6">
-              <h3 className="text-sm font-bold font-mono text-red-600 dark:text-red-400 mb-2">
-                Error loading profile
-              </h3>
-              <p className="text-sm font-mono text-red-600 dark:text-red-400">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-4 border border-red-600 dark:border-red-400 px-4 py-2 text-sm font-mono transition-transform hover:scale-105 active:scale-95"
-              >
-                Retry
-              </button>
-            </div>
+            <EmptyState
+              icon={AlertTriangle}
+              title="Error Loading Profile"
+              description={error}
+              variant="error"
+              action={
+                <button
+                  onClick={() => window.location.reload()}
+                  className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
+                >
+                  Retry
+                </button>
+              }
+            />
           )}
 
           {/* No Token State */}
           {!token && !loading && (
-            <div className="border border-black dark:border-white p-12 text-center">
-              <p className="text-lg font-mono text-black/60 dark:text-white/60 mb-4">
-                You need to be logged in to view your profile
-              </p>
-              <Link
-                href="/auth/callback"
-                className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono transition-transform hover:scale-105 active:scale-95"
-              >
-                Login
-              </Link>
-            </div>
+            <EmptyState
+              icon={LogIn}
+              title="Login Required"
+              description="You need to be logged in to view your profile."
+              action={
+                <Link
+                  href="/auth/callback"
+                  className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-transform hover:scale-105 active:scale-95"
+                >
+                  Login
+                </Link>
+              }
+            />
           )}
 
           {/* Profile Content */}
@@ -281,24 +286,20 @@ export default function Me() {
                 </div>
 
                 {!profile.components || profile.components.length === 0 ? (
-                  <div className="border-2 border-black dark:border-white p-12 sm:p-20 text-center bg-grid-pattern relative">
-                    <div className="absolute inset-0 bg-white/80 dark:bg-black/80 pointer-events-none"></div>
-                    <div className="relative z-10 max-w-lg mx-auto space-y-6">
-                      <Package className="w-16 h-16 sm:w-24 sm:h-24 mx-auto stroke-1" />
-                      <div>
-                        <h3 className="text-4xl font-black uppercase tracking-tighter mb-4">No Components Yet</h3>
-                        <p className="text-sm font-mono text-black/80 dark:text-white/80 leading-relaxed font-bold">
-                          Start building your component library by sharing your first UI piece with the community. Let&apos;s make something amazing.
-                        </p>
-                      </div>
+                  <EmptyState
+                    icon={Package}
+                    title="No Components Yet"
+                    description="Start building your component library by sharing your first UI piece with the community. Let's make something amazing."
+                    size="lg"
+                    action={
                       <Link
                         href="/components/new"
                         className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
                       >
                         CREATE YOUR FIRST COMPONENT →
                       </Link>
-                    </div>
-                  </div>
+                    }
+                  />
                 ) : (
                   <>
                     <div className="grid grid-cols-1 gap-6">

@@ -3,9 +3,12 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { commentApi } from "@/lib/api";
+import { EmptyState } from "@/components/common/empty-state";
+import { useToast } from "@/components/common/toast";
 import type { Comment } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
+import { MessageSquare } from "lucide-react";
 
 interface CommentsProps {
   slug: string;
@@ -13,6 +16,7 @@ interface CommentsProps {
 
 export function ComponentComments({ slug }: CommentsProps) {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -29,6 +33,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       setComments(data || []);
     } catch (error) {
       console.error("Failed to load comments:", error);
+      showToast("Failed to load comments.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +50,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       setNewComment("");
     } catch (error) {
       console.error("Failed to post comment:", error);
-      alert("Failed to post comment");
+      showToast("Failed to post comment. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -57,7 +62,8 @@ export function ComponentComments({ slug }: CommentsProps) {
       await commentApi.delete(slug, commentId, token);
       setComments(comments.filter(c => c.id !== commentId));
     } catch (error) {
-      alert("Failed to delete comment");
+      console.error("Failed to delete comment:", error);
+      showToast("Failed to delete comment. Please try again.", "error");
     }
   };
 
@@ -97,7 +103,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       {isLoading ? (
         <div className="font-mono text-sm animate-pulse">Loading comments...</div>
       ) : comments.length === 0 ? (
-        <div className="font-mono text-sm text-black/60 dark:text-white/60">No comments yet. Be the first!</div>
+        <EmptyState icon={MessageSquare} title="No Comments Yet" description="Be the first to start the discussion." />
       ) : (
         <div className="space-y-4">
           {comments.map((comment) => (

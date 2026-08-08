@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/store";
 import { webhookApi } from "@/lib/api";
-import { Check } from "lucide-react";
+import { CopyButton } from "@/components/common/copy-button";
 
 interface WebhookSetupProps {
   slug: string;
@@ -14,7 +14,6 @@ export function WebhookSetup({ slug }: WebhookSetupProps) {
   const [config, setConfig] = useState<{ webhookUrl: string; webhookSecret: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"url" | "secret" | null>(null);
 
   const loadConfig = async () => {
     if (!token) return;
@@ -28,12 +27,6 @@ export function WebhookSetup({ slug }: WebhookSetupProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const copy = async (value: string, which: "url" | "secret") => {
-    await navigator.clipboard.writeText(value);
-    setCopied(which);
-    setTimeout(() => setCopied(null), 2000);
   };
 
   return (
@@ -59,29 +52,19 @@ export function WebhookSetup({ slug }: WebhookSetupProps) {
               <div className="space-y-1">
                 <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase">Payload URL</div>
                 <div className="relative">
-                  <div className="font-mono text-xs bg-black dark:bg-white text-white dark:text-black p-3 pr-20 overflow-x-auto">
+                  <div className="font-mono text-xs bg-black dark:bg-white text-white dark:text-black p-3 pr-24 overflow-x-auto">
                     {config.webhookUrl}
                   </div>
-                  <button
-                    onClick={() => copy(config.webhookUrl, "url")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-mono border border-white dark:border-black bg-white dark:bg-black text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                  >
-                    {copied === "url" ? (<span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Copied</span>) : "Copy"}
-                  </button>
+                  <CopyButton value={config.webhookUrl} />
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase">Secret</div>
                 <div className="relative">
-                  <div className="font-mono text-xs bg-black dark:bg-white text-white dark:text-black p-3 pr-20 overflow-x-auto">
+                  <div className="font-mono text-xs bg-black dark:bg-white text-white dark:text-black p-3 pr-24 overflow-x-auto">
                     {config.webhookSecret}
                   </div>
-                  <button
-                    onClick={() => copy(config.webhookSecret, "secret")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-mono border border-white dark:border-black bg-white dark:bg-black text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                  >
-                    {copied === "secret" ? (<span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Copied</span>) : "Copy"}
-                  </button>
+                  <CopyButton value={config.webhookSecret} />
                 </div>
               </div>
             </>

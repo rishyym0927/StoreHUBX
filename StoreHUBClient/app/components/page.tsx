@@ -6,6 +6,7 @@ import { useComponents } from "@/hooks/use-api";
 import { ComponentCard } from "@/components/common/component-card";
 import { Pagination } from "@/components/common/pagination";
 import { ComponentCardSkeleton } from "@/components/common/component-card-skeleton";
+import { EmptyState } from "@/components/common/empty-state";
 import { useAuth } from "@/lib/store";
 import { AlertTriangle, Search } from "lucide-react";
 import type { ComponentsQueryParams } from "@/types";
@@ -82,15 +83,20 @@ export default function ComponentsPage() {
 
       {/* Error State */}
       {error && (
-        <div className="p-6 border-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
-          <p className="text-sm font-mono text-red-700 dark:text-red-300 font-bold mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
-          <button
-            onClick={refetch}
-            className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
-          >
-            Try Again
-          </button>
-        </div>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Something Went Wrong"
+          description={error}
+          variant="error"
+          action={
+            <button
+              onClick={refetch}
+              className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
+            >
+              Try Again
+            </button>
+          }
+        />
       )}
 
       {/* Filters */}
@@ -170,21 +176,21 @@ export default function ComponentsPage() {
             ))}
           </div>
         ) : components.length === 0 ? (
-          <div className="p-12 border-2 border-black dark:border-white text-center space-y-4">
-            <Search className="w-16 h-16 mb-4 mx-auto stroke-1" />
-            <div className="text-2xl font-bold">No components found</div>
-            {hasActiveFilters && (
-              <p className="text-sm font-mono text-black/60 dark:text-white/60">
-                Try adjusting your filters or{" "}
+          <EmptyState
+            icon={Search}
+            title="No Components Found"
+            description={hasActiveFilters ? "Try adjusting your filters to see more results." : undefined}
+            action={
+              hasActiveFilters ? (
                 <button
                   onClick={handleClearFilters}
-                  className="underline hover:text-black dark:hover:text-white font-bold"
+                  className="underline hover:text-black dark:hover:text-white font-bold text-sm font-mono"
                 >
-                  clear all filters
+                  Clear all filters
                 </button>
-              </p>
-            )}
-          </div>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <div className="grid gap-6">

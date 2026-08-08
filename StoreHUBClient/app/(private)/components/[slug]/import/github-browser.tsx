@@ -5,12 +5,14 @@ import { useAuth } from "@/lib/store";
 import { githubApi, componentApi } from "@/lib/api";
 import { useGitHubRepos, useGitHubBranches } from "@/hooks/use-api";
 import { AlertTriangle, FolderOpen, Link2 } from "lucide-react";
+import { useToast } from "@/components/common/toast";
 import type { GitHubRepo, GitHubContent } from "@/types";
 
 type BrowserStep = "select-repo" | "browse-folders" | "confirm";
 
 export function GithubBrowser({ slug }: { slug: string }) {
   const token = useAuth((s) => s.token);
+  const { showToast } = useToast();
   const { data: repos, loading: loadingRepos } = useGitHubRepos();
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
@@ -90,7 +92,7 @@ export function GithubBrowser({ slug }: { slug: string }) {
       console.log("Set path to:", nextPath, "SHA to:", branchSha);
     } catch (e) {
       console.error("Failed to load contents:", e);
-      alert("Failed to load folder contents. Please check the branch/path.");
+      showToast("Failed to load folder contents. Please check the branch/path.", "error");
     } finally {
       setLoading(false);
     }
@@ -137,13 +139,19 @@ const fetchBranchSha = async () => {
       
       // Show success message if initial version was created
       if (response.initialVersion) {
-        alert(`✓ Repository linked successfully!\n\nInitial version ${response.initialVersion.version} has been created and build is queued.`);
+        showToast(
+          `Repository linked! Initial version ${response.initialVersion.version} created and build queued.`,
+          "success"
+        );
+        setTimeout(() => {
+          window.location.href = `/components/${slug}`;
+        }, 1200);
+      } else {
+        window.location.href = `/components/${slug}`;
       }
-      
-      window.location.href = `/components/${slug}`;
     } catch (e) {
       console.error("Link submit failed:", e);
-      alert("Failed to link folder. Please try again.");
+      showToast("Failed to link folder. Please try again.", "error");
     } finally {
       setSubmitting(false);
     }

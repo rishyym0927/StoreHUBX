@@ -4,9 +4,12 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { ratingApi } from "@/lib/api";
 import { RatingStars } from "@/components/common/rating-stars";
+import { EmptyState } from "@/components/common/empty-state";
+import { useToast } from "@/components/common/toast";
 import type { Rating } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
+import { Star } from "lucide-react";
 
 interface RatingsProps {
   slug: string;
@@ -14,6 +17,7 @@ interface RatingsProps {
 
 export function ComponentRatings({ slug }: RatingsProps) {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
 
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -40,6 +44,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
       }
     } catch (error) {
       console.error("Failed to load ratings:", error);
+      showToast("Failed to load reviews.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -49,14 +54,43 @@ export function ComponentRatings({ slug }: RatingsProps) {
     e.preventDefault();
     if (!token || !user || score < 1) return;
 
+    // Optimistic update: show the review immediately, roll back on failure.
+    const previousRatings = ratings;
+    const previousAverage = averageRating;
+    const previousCount = ratingCount;
+    const hadOwnRating = ratings.some((r) => r.userId === user.providerId);
+
+    const optimisticRating: Rating = {
+      id: `optimistic-${user.providerId}`,
+      componentId: "",
+      userId: user.providerId,
+      authorUsername: user.username,
+      authorName: user.name,
+      authorAvatar: user.avatarUrl,
+      score,
+      review,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    };
+    const nextRatings = [optimisticRating, ...ratings.filter((r) => r.userId !== user.providerId)];
+    const nextCount = hadOwnRating ? ratingCount : ratingCount + 1;
+    const nextAverage = nextRatings.reduce((sum, r) => sum + r.score, 0) / nextRatings.length;
+
+    setRatings(nextRatings);
+    setRatingCount(nextCount);
+    setAverageRating(nextAverage);
     setIsSubmitting(true);
+
     try {
       const saved = await ratingApi.upsert(slug, { score, review }, token);
       setRatings((prev) => [saved, ...prev.filter((r) => r.userId !== saved.userId)]);
       await fetchRatings();
     } catch (error) {
       console.error("Failed to submit rating:", error);
-      alert("Failed to submit rating");
+      setRatings(previousRatings);
+      setAverageRating(previousAverage);
+      setRatingCount(previousCount);
+      showToast("Failed to submit rating. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +136,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
       {isLoading ? (
         <div className="font-mono text-sm animate-pulse">Loading reviews...</div>
       ) : ratings.length === 0 ? (
-        <div className="font-mono text-sm text-black/60 dark:text-white/60">No reviews yet. Be the first!</div>
+        <EmptyState icon={Star} title="No Reviews Yet" description="Be the first to rate this component." />
       ) : (
         <div className="space-y-4">
           {ratings.map((rating) => (

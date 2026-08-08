@@ -138,7 +138,7 @@ export function OwnerActions({
                 value={newCollaborator}
                 onChange={(e) => setNewCollaborator(e.target.value)}
                 placeholder="GitHub provider ID"
-                className="flex-1 min-w-0 px-2 py-1.5 border-2 border-black dark:border-white bg-transparent text-xs font-mono focus:outline-none"
+                className="flex-1 min-w-0 px-2 py-1.5 border-2 border-black dark:border-white bg-transparent text-xs font-mono"
               />
               <button
                 onClick={addCollaborator}

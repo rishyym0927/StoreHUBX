@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { userApi, ApiError } from "@/lib/api";
 import { Badge } from "@/components/common/badge";
+import { EmptyState } from "@/components/common/empty-state";
 import { useAuth } from "@/lib/store";
+import { AlertTriangle, Package } from "lucide-react";
 import type { UserProfileResponse, Component } from "@/types";
 
 export default function UserProfile() {
@@ -57,18 +59,20 @@ export default function UserProfile() {
 
         {/* Error State */}
         {error && !loading && (
-          <div className="border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 p-4 sm:p-6">
-            <h3 className="text-sm font-bold font-mono text-red-600 dark:text-red-400 mb-2">
-              Error loading profile
-            </h3>
-            <p className="text-sm font-mono text-red-600 dark:text-red-400">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 border border-red-600 dark:border-red-400 px-4 py-2 text-sm font-mono transition-transform hover:scale-105 active:scale-95"
-            >
-              Retry
-            </button>
-          </div>
+          <EmptyState
+            icon={AlertTriangle}
+            title="Error Loading Profile"
+            description={error}
+            variant="error"
+            action={
+              <button
+                onClick={() => window.location.reload()}
+                className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
+              >
+                Retry
+              </button>
+            }
+          />
         )}
 
         {/* Profile Content */}
@@ -156,11 +160,7 @@ export default function UserProfile() {
               </div>
 
               {!profile.components || profile.components.length === 0 ? (
-                <div className="border border-black dark:border-white p-12 text-center">
-                  <p className="text-lg font-mono text-black/60 dark:text-white/60">
-                    No components published yet
-                  </p>
-                </div>
+                <EmptyState icon={Package} title="No Components Yet" description="This user hasn't published any components yet." />
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {profile.components.map((component) => (

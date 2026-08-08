@@ -7,12 +7,14 @@ import { useAuth } from "@/lib/store";
 import { userApi, ApiError } from "@/lib/api";
 import type { OwnerAnalyticsResponse } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
+import { EmptyState } from "@/components/common/empty-state";
+import { AlertTriangle, Package } from "lucide-react";
 
 function StatTile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="border-2 border-black dark:border-white p-6 text-center">
-      <div className="text-3xl sm:text-4xl font-black tracking-tight">{value}</div>
-      <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider mt-1">
+    <div className="border-2 border-black dark:border-white p-6 text-center overflow-hidden">
+      <div className="text-3xl sm:text-4xl font-black tracking-tight truncate">{value}</div>
+      <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider mt-1 truncate">
         {label}
       </div>
     </div>
@@ -56,11 +58,7 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {error && (
-            <div className="p-4 border-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 font-mono text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
-          )}
+          {error && <EmptyState icon={AlertTriangle} title="Failed To Load Analytics" description={error} variant="error" />}
 
           {data && (
             <>
@@ -72,9 +70,7 @@ export default function AnalyticsPage() {
               </div>
 
               {data.components.length === 0 ? (
-                <div className="text-center py-16 font-mono text-sm text-black/60 dark:text-white/60">
-                  You don&apos;t own any components yet.
-                </div>
+                <EmptyState icon={Package} title="No Components Yet" description="You don't own any components yet." />
               ) : (
                 <div className="space-y-4">
                   {data.components.map((comp) => (

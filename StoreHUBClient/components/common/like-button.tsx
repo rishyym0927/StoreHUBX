@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { componentApi } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/common/toast";
 
 interface LikeButtonProps {
   slug: string;
@@ -14,6 +15,7 @@ interface LikeButtonProps {
 export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButtonProps) {
   const { token, user } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -29,7 +31,7 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
 
   const handleLike = async () => {
     if (!token || !user) {
-      alert("Please login to like this component");
+      showToast("Please login to like this component", "info");
       return;
     }
 
@@ -51,6 +53,7 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
       console.error("Failed to toggle like:", error);
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
+      showToast("Failed to update like. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
