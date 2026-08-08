@@ -3,7 +3,6 @@ import type { Component } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
 import { RepoStatsBadge } from "@/components/common/repo-stats-badge";
-import { RepoOgBanner } from "@/components/common/repo-og-banner";
 
 interface ComponentCardProps {
   component: Component;
@@ -22,8 +21,6 @@ export function ComponentCard({
   return (
     <div className="brutal-lift brutal-lift-lg group border-2 border-black dark:border-white">
       <div className="p-6 space-y-4">
-        {isLinked && <RepoOgBanner owner={component.repoLink!.owner} repo={component.repoLink!.repo} />}
-
         {/* Header Section */}
         <div className="flex items-start justify-between gap-4">
           <Link
