@@ -55,9 +55,10 @@ func EnqueueBuild(c *fiber.Ctx) error {
 			Ref:    comp.RepoLink.Ref,
 			Commit: comp.RepoLink.Commit,
 		},
-		Logs:      []string{"enqueued"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Logs:        []string{"enqueued"},
+		MaxAttempts: 3,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")

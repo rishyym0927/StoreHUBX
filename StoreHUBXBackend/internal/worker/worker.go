@@ -53,10 +53,17 @@ func (p *Processor) setStatus(ctx context.Context, id primitive.ObjectID, status
 func (p *Processor) claimQueued(ctx context.Context) (*models.BuildJob, error) {
 	var job models.BuildJob
 	now := time.Now()
+	filter := bson.M{
+		"status": models.BuildQueued,
+		"$or": []bson.M{
+			{"nextAttemptAt": bson.M{"$exists": false}},
+			{"nextAttemptAt": bson.M{"$lte": now}},
+		},
+	}
 	err := db.Client.Database(os.Getenv("MONGO_DB")).
 		Collection("build_jobs").
 		FindOneAndUpdate(ctx,
-			bson.M{"status": models.BuildQueued},
+			filter,
 			bson.M{"$set": bson.M{"status": models.BuildRunning, "startedAt": now, "updatedAt": now}},
 			options.FindOneAndUpdate().SetReturnDocument(options.After),
 		).Decode(&job)
@@ -178,9 +185,34 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 	)
 }
 
+// maxBuildBackoff caps the wait between retries so a flaky job doesn't
+// end up parked for an unreasonably long time before its next attempt.
+const maxBuildBackoff = 2 * time.Minute
+
 func (p *Processor) fail(ctx context.Context, job *models.BuildJob, err error) {
 	p.logPush(ctx, job.ID, "ERROR: "+err.Error())
-	p.setStatus(ctx, job.ID, models.BuildError, bson.M{"endedAt": time.Now()})
+
+	maxAttempts := job.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 3
+	}
+	attempts := job.Attempts + 1
+
+	if attempts < maxAttempts {
+		backoff := 10 * time.Second * time.Duration(1<<(attempts-1))
+		if backoff > maxBuildBackoff {
+			backoff = maxBuildBackoff
+		}
+		nextAttemptAt := time.Now().Add(backoff)
+		p.logPush(ctx, job.ID, fmt.Sprintf("[RETRY] attempt %d/%d failed, retrying in %s", attempts, maxAttempts, backoff))
+		p.setStatus(ctx, job.ID, models.BuildQueued, bson.M{
+			"attempts":      attempts,
+			"nextAttemptAt": nextAttemptAt,
+		})
+		return
+	}
+
+	p.setStatus(ctx, job.ID, models.BuildError, bson.M{"attempts": attempts, "endedAt": time.Now()})
 
 	// Update component version status to error
 	verCol := db.Client.Database(os.Getenv("MONGO_DB")).Collection("component_versions")

@@ -38,8 +38,12 @@ type BuildJob struct {
 	Artifacts   *BuildArtifact     `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 	Logs        []string           `bson:"logs,omitempty" json:"logs,omitempty"`
 
-	CreatedAt time.Time  `bson:"createdAt" json:"createdAt"`
-	UpdatedAt time.Time  `bson:"updatedAt" json:"updatedAt"`
-	StartedAt *time.Time `bson:"startedAt,omitempty" json:"startedAt,omitempty"`
-	EndedAt   *time.Time `bson:"endedAt,omitempty" json:"endedAt,omitempty"`
+	Attempts    int `bson:"attempts" json:"attempts"`       // number of failed attempts so far
+	MaxAttempts int `bson:"maxAttempts" json:"maxAttempts"` // give up and set status=error after this many failures
+
+	CreatedAt     time.Time  `bson:"createdAt" json:"createdAt"`
+	UpdatedAt     time.Time  `bson:"updatedAt" json:"updatedAt"`
+	StartedAt     *time.Time `bson:"startedAt,omitempty" json:"startedAt,omitempty"`
+	EndedAt       *time.Time `bson:"endedAt,omitempty" json:"endedAt,omitempty"`
+	NextAttemptAt *time.Time `bson:"nextAttemptAt,omitempty" json:"nextAttemptAt,omitempty"` // set when retrying after backoff
 }
