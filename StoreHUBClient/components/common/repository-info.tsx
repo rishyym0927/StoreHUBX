@@ -1,18 +1,39 @@
-import { RepoLink } from "@/types";
+import { RepoLink, GitHubRepoInfo, GitHubLanguages, GitHubLatestCommit, GitHubContributor } from "@/types";
+import { formatRelativeTime } from "@/lib/api-utils";
+import { Star, GitFork, CircleDot } from "lucide-react";
 
 interface RepositoryInfoProps {
   repoLink: RepoLink;
+  repoInfo?: GitHubRepoInfo | null;
+  languages?: GitHubLanguages | null;
+  latestCommit?: GitHubLatestCommit | null;
+  contributors?: GitHubContributor[] | null;
 }
 
-export function RepositoryInfo({ repoLink }: RepositoryInfoProps) {
+// Grayscale shades only, consistent with the black/white palette — cycled
+// across however many languages a repo reports.
+const LANGUAGE_SHADES = [
+  "bg-black dark:bg-white",
+  "bg-black/70 dark:bg-white/70",
+  "bg-black/45 dark:bg-white/45",
+  "bg-black/25 dark:bg-white/25",
+  "bg-black/12 dark:bg-white/12",
+];
+
+export function RepositoryInfo({ repoLink, repoInfo, languages, latestCommit, contributors }: RepositoryInfoProps) {
   if (!repoLink || !repoLink.owner || !repoLink.repo) {
     return null;
   }
 
   const repoUrl = `https://github.com/${repoLink.owner}/${repoLink.repo}`;
-  const pathUrl = repoLink.path 
+  const pathUrl = repoLink.path
     ? `${repoUrl}/tree/${repoLink.ref || "main"}/${repoLink.path}`
     : repoUrl;
+
+  const languageEntries = languages
+    ? Object.entries(languages).sort((a, b) => b[1] - a[1])
+    : [];
+  const languageTotal = languageEntries.reduce((sum, [, bytes]) => sum + bytes, 0);
 
   return (
     <div className="space-y-3 pb-4 border-b border-black dark:border-white">
@@ -57,6 +78,24 @@ export function RepositoryInfo({ repoLink }: RepositoryInfoProps) {
         </div>
       </a>
 
+      {/* Repo stats (item 39) */}
+      {repoInfo && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono">
+          <span className="flex items-center gap-1" title="Stars">
+            <Star className="w-3.5 h-3.5" /> {repoInfo.stars}
+          </span>
+          <span className="flex items-center gap-1" title="Forks">
+            <GitFork className="w-3.5 h-3.5" /> {repoInfo.forks}
+          </span>
+          <span className="flex items-center gap-1" title="Open issues">
+            <CircleDot className="w-3.5 h-3.5" /> {repoInfo.openIssues}
+          </span>
+          {repoInfo.license?.spdxId && repoInfo.license.spdxId !== "NOASSERTION" && (
+            <span className="text-black/60 dark:text-white/60">{repoInfo.license.spdxId}</span>
+          )}
+        </div>
+      )}
+
       {/* Path Information */}
       {repoLink.path && (
         <a
@@ -78,21 +117,104 @@ export function RepositoryInfo({ repoLink }: RepositoryInfoProps) {
         <span className="font-bold">{repoLink.ref || "main"}</span>
       </div>
 
-      {/* Commit Information */}
-      {repoLink.commit && (
+      {/* Latest commit (item 42) — real message + relative time when available,
+          falling back to the bare SHA if the enrichment fetch didn't resolve. */}
+      {latestCommit ? (
         <a
-          href={`${repoUrl}/commit/${repoLink.commit}`}
+          href={latestCommit.htmlUrl || `${repoUrl}/commit/${latestCommit.sha}`}
           target="_blank"
           rel="noopener noreferrer"
           className="block"
+          title={latestCommit.sha}
         >
-          <div className="flex items-center justify-between text-xs font-mono hover:bg-black/5 dark:hover:bg-white/5 p-2 -mx-2 rounded transition-colors">
-            <span className="text-black/60 dark:text-white/60">Commit:</span>
-            <span className="font-mono hover:underline">
-              {repoLink.commit.substring(0, 7)}
-            </span>
+          <div className="text-xs font-mono hover:bg-black/5 dark:hover:bg-white/5 p-2 -mx-2 rounded transition-colors">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate font-bold hover:underline">
+                {latestCommit.message.split("\n")[0]}
+              </span>
+              <span className="shrink-0 text-black/60 dark:text-white/60">
+                {latestCommit.sha.substring(0, 7)}
+              </span>
+            </div>
+            <div className="text-black/60 dark:text-white/60 mt-0.5">
+              {latestCommit.authorName}
+              {latestCommit.date && ` · ${formatRelativeTime(latestCommit.date)}`}
+            </div>
           </div>
         </a>
+      ) : (
+        repoLink.commit && (
+          <a
+            href={`${repoUrl}/commit/${repoLink.commit}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <div className="flex items-center justify-between text-xs font-mono hover:bg-black/5 dark:hover:bg-white/5 p-2 -mx-2 rounded transition-colors">
+              <span className="text-black/60 dark:text-white/60">Commit:</span>
+              <span className="font-mono hover:underline">
+                {repoLink.commit.substring(0, 7)}
+              </span>
+            </div>
+          </a>
+        )
+      )}
+
+      {/* Language breakdown bar (item 41) */}
+      {languageEntries.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">
+            Languages
+          </div>
+          <div className="flex h-2 w-full overflow-hidden border border-black dark:border-white">
+            {languageEntries.map(([lang, bytes], i) => (
+              <div
+                key={lang}
+                className={LANGUAGE_SHADES[i % LANGUAGE_SHADES.length]}
+                style={{ width: `${(bytes / languageTotal) * 100}%` }}
+                title={`${lang}: ${((bytes / languageTotal) * 100).toFixed(1)}%`}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-black/60 dark:text-white/60">
+            {languageEntries.slice(0, 5).map(([lang, bytes]) => (
+              <span key={lang}>
+                {lang} {((bytes / languageTotal) * 100).toFixed(0)}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contributor avatar stack (item 43) */}
+      {contributors && contributors.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">
+            Contributors
+          </div>
+          <a
+            href={`${repoUrl}/graphs/contributors`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center -space-x-2"
+          >
+            {contributors.slice(0, 8).map((c) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={c.login}
+                src={c.avatarUrl}
+                alt={c.login}
+                title={`${c.login} (${c.contributions} commits)`}
+                className="w-6 h-6 border-2 border-white dark:border-black bg-black/10 dark:bg-white/10 object-cover"
+              />
+            ))}
+            {contributors.length > 8 && (
+              <span className="flex items-center justify-center w-6 h-6 border-2 border-white dark:border-black bg-black text-white dark:bg-white dark:text-black text-[9px] font-bold">
+                +{contributors.length - 8}
+              </span>
+            )}
+          </a>
+        </div>
       )}
     </div>
   );

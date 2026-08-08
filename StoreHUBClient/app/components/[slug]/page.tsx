@@ -1,5 +1,5 @@
 // ComponentDetail.tsx
-import { componentApi, versionApi, userApi } from "@/lib/api";
+import { componentApi, versionApi, userApi, githubApi } from "@/lib/api";
 import { UserProfileCard } from "@/components/common/user-profile-card";
 import { ComponentMetadata } from "@/components/common/component-metadata";
 import { RepositoryInfo } from "@/components/common/repository-info";
@@ -13,7 +13,15 @@ import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
 import { CheckCircle2 } from "lucide-react";
 
-import type { Component, ComponentVersion, User } from "@/types";
+import type {
+  Component,
+  ComponentVersion,
+  User,
+  GitHubRepoInfo,
+  GitHubLanguages,
+  GitHubLatestCommit,
+  GitHubContributor,
+} from "@/types";
 
 export default async function ComponentDetail({
   params,
@@ -54,6 +62,34 @@ export default async function ComponentDetail({
   } catch (error) {
     console.error("Failed to fetch owner profile:", error);
     // Continue without owner profile
+  }
+
+  // Phase 7 — GitHub data enrichment (items 39/41/42/43/44). Public, cached
+  // endpoints; best-effort in parallel so a GitHub hiccup never blocks the
+  // page — each just falls back to null and its section renders nothing.
+  const isLinked = !!(comp.repoLink && comp.repoLink.owner && comp.repoLink.repo);
+  let repoInfo: GitHubRepoInfo | null = null;
+  let languages: GitHubLanguages | null = null;
+  let latestCommit: GitHubLatestCommit | null = null;
+  let contributors: GitHubContributor[] | null = null;
+  let readme: string | null = null;
+
+  if (isLinked) {
+    const owner = comp.repoLink!.owner;
+    const repo = comp.repoLink!.repo;
+    const ref = comp.repoLink!.ref;
+    const [infoResult, langResult, commitResult, contribResult, readmeResult] = await Promise.allSettled([
+      githubApi.getRepoInfo({ owner, repo }),
+      githubApi.getLanguages({ owner, repo }),
+      githubApi.getLatestCommit({ owner, repo, ref }),
+      githubApi.getContributors({ owner, repo }),
+      githubApi.getReadme({ owner, repo, ref }),
+    ]);
+    if (infoResult.status === "fulfilled") repoInfo = infoResult.value;
+    if (langResult.status === "fulfilled") languages = langResult.value;
+    if (commitResult.status === "fulfilled") latestCommit = commitResult.value;
+    if (contribResult.status === "fulfilled") contributors = contribResult.value;
+    if (readmeResult.status === "fulfilled") readme = readmeResult.value.content;
   }
 
   return (
@@ -211,7 +247,13 @@ export default async function ComponentDetail({
                 <div className="space-y-4 min-w-0">
                   {/* Repository Info */}
                   {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
-                    <RepositoryInfo repoLink={comp.repoLink} />
+                    <RepositoryInfo
+                      repoLink={comp.repoLink}
+                      repoInfo={repoInfo}
+                      languages={languages}
+                      latestCommit={latestCommit}
+                      contributors={contributors}
+                    />
                   )}
 
                   {/* Dates */}
@@ -234,7 +276,7 @@ export default async function ComponentDetail({
             </div>
 
             {/* Tabs Section */}
-            <ComponentDetailTabs component={comp} versions={versions} />
+            <ComponentDetailTabs component={comp} versions={versions} readme={readme} />
 
             {/* Reviews Section */}
             <ComponentRatings slug={comp.slug} />

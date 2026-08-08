@@ -5,18 +5,21 @@ import { Component, ComponentVersion } from "@/types";
 import { VersionsDisplay } from "./version-list";
 import { AutoDeploy } from "./auto-deploy";
 import { PreviewIframe } from "./preview-iframe";
+import { Markdown } from "./markdown";
 
 interface ComponentDetailTabsProps {
   component: Component;
   versions: ComponentVersion[];
+  readme?: string | null;
 }
 
-export function ComponentDetailTabs({ component, versions }: ComponentDetailTabsProps) {
-  const [activeTab, setActiveTab] = useState<"versions" | "preview" | "builds">("versions");
-  
+export function ComponentDetailTabs({ component, versions, readme }: ComponentDetailTabsProps) {
+  const [activeTab, setActiveTab] = useState<"versions" | "preview" | "builds" | "readme">("versions");
+
   const latestVersion = versions && versions.length > 0 ? versions[0] : null;
   const isLinked = component.repoLink && component.repoLink.owner && component.repoLink.repo;
   const hasPreview = latestVersion?.previewUrl;
+  const hasReadme = !!readme;
 
   return (
     <div className="space-y-6">
@@ -56,6 +59,19 @@ export function ComponentDetailTabs({ component, versions }: ComponentDetailTabs
             }`}
           >
             Auto-Deploy
+          </button>
+        )}
+
+        {hasReadme && (
+          <button
+            onClick={() => setActiveTab("readme")}
+            className={`font-mono text-sm px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === "readme"
+                ? "border-black dark:border-white font-bold -mb-0.5"
+                : "border-transparent text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
+            }`}
+          >
+            README
           </button>
         )}
       </div>
@@ -104,6 +120,13 @@ export function ComponentDetailTabs({ component, versions }: ComponentDetailTabs
               </p>
             </div>
             <AutoDeploy component={component} versions={versions} />
+          </div>
+        )}
+
+        {activeTab === "readme" && hasReadme && (
+          <div className="space-y-4">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">README</h2>
+            <Markdown content={readme} />
           </div>
         )}
       </div>

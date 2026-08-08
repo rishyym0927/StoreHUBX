@@ -21,12 +21,20 @@ import type {
   GitHubRepo,
   GitHubContent,
   GitHubBranch,
+  GitHubRepoInfo,
+  GitHubLanguages,
+  GitHubLatestCommit,
+  GitHubContributor,
+  GitHubReadme,
   UserProfileResponse,
   OwnerAnalyticsResponse,
   ComponentsQueryParams,
   GitHubReposQueryParams,
   GitHubContentsQueryParams,
   GitHubBranchQueryParams,
+  GitHubRepoQueryParams,
+  GitHubLatestCommitQueryParams,
+  GitHubReadmeQueryParams,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
@@ -504,6 +512,46 @@ export const githubApi = {
       { authToken }
     );
     return response;
+  },
+
+  /**
+   * Repo stats, description, license, topics. Public — no auth needed, cached server-side.
+   */
+  async getRepoInfo(params: GitHubRepoQueryParams) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubRepoInfo>(`/github/repo-info${query}`);
+  },
+
+  /**
+   * Bytes-per-language breakdown. Public — no auth needed, cached server-side.
+   */
+  async getLanguages(params: GitHubRepoQueryParams) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubLanguages>(`/github/languages${query}`);
+  },
+
+  /**
+   * Latest commit message/author/date. Public — no auth needed, cached server-side.
+   */
+  async getLatestCommit(params: GitHubLatestCommitQueryParams) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubLatestCommit>(`/github/latest-commit${query}`);
+  },
+
+  /**
+   * Top contributors, capped at 12. Public — no auth needed, cached server-side.
+   */
+  async getContributors(params: GitHubRepoQueryParams) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubContributor[]>(`/github/contributors${query}`);
+  },
+
+  /**
+   * Decoded README markdown content. Public — no auth needed, cached server-side.
+   */
+  async getReadme(params: GitHubReadmeQueryParams) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubReadme>(`/github/readme${query}`);
   },
 };
 

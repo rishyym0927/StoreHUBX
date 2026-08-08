@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/store";
 import { githubApi, componentApi } from "@/lib/api";
 import { useGitHubRepos, useGitHubBranches } from "@/hooks/use-api";
-import { AlertTriangle, FolderOpen, Link2 } from "lucide-react";
+import { AlertTriangle, FolderOpen, Link2, Check, Plus } from "lucide-react";
 import { useToast } from "@/components/common/toast";
 import type { GitHubRepo, GitHubContent } from "@/types";
 
@@ -26,6 +26,8 @@ export function GithubBrowser({ slug }: { slug: string }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const canBrowse = owner && repo;
 
   // Fetch branches when a repo is selected
@@ -65,6 +67,22 @@ export function GithubBrowser({ slug }: { slug: string }) {
     setPath("");
     setEntries(null);
     setStep("browse-folders");
+
+    // Item 46: suggest the repo's GitHub topics as one-click-add tags.
+    setSuggestedTopics([]);
+    setSelectedTags([]);
+    githubApi
+      .getRepoInfo({ owner: r.owner.login, repo: r.name })
+      .then((info) => setSuggestedTopics(info.topics || []))
+      .catch(() => {
+        // Best-effort — no suggestions if this fails, linking still works.
+      });
+  };
+
+  const toggleSuggestedTag = (topic: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
+    );
   };
 
   // List contents for current path
@@ -129,7 +147,7 @@ const fetchBranchSha = async () => {
   const onSubmit = async () => {
     if (!owner || !repo || !token) return;
     
-    const payload = { owner, repo, path, ref, commit: currentSha };
+    const payload = { owner, repo, path, ref, commit: currentSha, tags: selectedTags };
     console.log("Submitting link payload:", payload);
     
     setSubmitting(true);
@@ -441,6 +459,33 @@ const fetchBranchSha = async () => {
                   </div>
                 )}
               </div>
+
+              {/* Item 46: GitHub topic tag suggestions */}
+              {suggestedTopics.length > 0 && (
+                <div className="p-4 border-2 border-black dark:border-white rounded-xl space-y-2">
+                  <p className="text-sm font-semibold">Suggested tags from GitHub topics</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedTopics.map((topic) => {
+                      const isSelected = selectedTags.includes(topic);
+                      return (
+                        <button
+                          key={topic}
+                          type="button"
+                          onClick={() => toggleSuggestedTag(topic)}
+                          className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-mono border-2 rounded-full transition-colors ${
+                            isSelected
+                              ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                              : "border-black/40 dark:border-white/40 hover:border-black dark:hover:border-white"
+                          }`}
+                        >
+                          {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                          {topic}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Link button */}
               <div className="flex items-center justify-between p-4 bg-linear-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl">

@@ -39,6 +39,16 @@ func RegisterRoutes(app *fiber.App) {
 	// GitHub push webhook (public - authenticated via HMAC signature, Phase 4.12)
 	app.Post("/webhooks/github/:slug", handlers.HandleGitHubWebhook)
 
+	// GitHub data enrichment (Phase 7) — public repo read endpoints, cached,
+	// no viewer token needed since the underlying data is public. Public (not
+	// under /api) so anonymous Browse/detail-page visitors get real repo
+	// stats/languages/commits/contributors/README, not just logged-in owners.
+	app.Get("/github/repo-info", githubapi.GetRepoInfo)
+	app.Get("/github/languages", githubapi.GetLanguages)
+	app.Get("/github/latest-commit", githubapi.GetLatestCommit)
+	app.Get("/github/contributors", githubapi.GetContributors)
+	app.Get("/github/readme", githubapi.GetReadme)
+
 	// ---------- Protected (JWT) ----------
 	// Use the middleware function itself, not a type
 	api := app.Group("/api", middleware.JWTProtected)
@@ -46,7 +56,7 @@ func RegisterRoutes(app *fiber.App) {
 	// Components (writes)
 	api.Post("/components", handlers.CreateComponent)
 	api.Post("/components/:slug/versions", handlers.AddVersion)
-	
+
 	// Social
 	api.Post("/components/:slug/like", handlers.ToggleLikeComponent)
 	api.Post("/components/:slug/comments", handlers.AddComment)

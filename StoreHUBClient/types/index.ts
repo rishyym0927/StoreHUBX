@@ -152,6 +152,39 @@ export interface GitHubBranch {
   protected: boolean;
 }
 
+// Phase 7 — GitHub data enrichment. Trimmed views returned by the backend's
+// cached /api/github/* enrichment endpoints (internal/github/handlers.go).
+export interface GitHubRepoInfo {
+  stars: number;
+  forks: number;
+  openIssues: number;
+  description: string;
+  license: { spdxId: string; name: string } | null;
+  topics: string[];
+  defaultBranch: string;
+}
+
+export type GitHubLanguages = Record<string, number>;
+
+export interface GitHubLatestCommit {
+  sha: string;
+  message: string;
+  authorName: string;
+  date: string;
+  htmlUrl: string;
+}
+
+export interface GitHubContributor {
+  login: string;
+  avatarUrl: string;
+  htmlUrl: string;
+  contributions: number;
+}
+
+export interface GitHubReadme {
+  content: string;
+}
+
 // ========================================
 // API Request/Response Types
 // ========================================
@@ -199,6 +232,7 @@ export interface ComponentLinkRequest {
   path: string;
   ref: string;
   commit?: string;
+  tags?: string[];
 }
 
 export interface ComponentLinkResponse {
@@ -313,6 +347,23 @@ export interface GitHubBranchQueryParams {
   owner: string;
   repo: string;
   branch?: string;
+}
+
+export interface GitHubRepoQueryParams {
+  owner: string;
+  repo: string;
+}
+
+export interface GitHubLatestCommitQueryParams {
+  owner: string;
+  repo: string;
+  ref?: string;
+}
+
+export interface GitHubReadmeQueryParams {
+  owner: string;
+  repo: string;
+  ref?: string;
 }
 
 // ========================================

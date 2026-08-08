@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Component } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
+import { RepoStatsBadge } from "@/components/common/repo-stats-badge";
+import { RepoOgBanner } from "@/components/common/repo-og-banner";
 
 interface ComponentCardProps {
   component: Component;
@@ -20,6 +22,8 @@ export function ComponentCard({
   return (
     <div className="brutal-lift brutal-lift-lg group border-2 border-black dark:border-white">
       <div className="p-6 space-y-4">
+        {isLinked && <RepoOgBanner owner={component.repoLink!.owner} repo={component.repoLink!.repo} />}
+
         {/* Header Section */}
         <div className="flex items-start justify-between gap-4">
           <Link
@@ -44,12 +48,15 @@ export function ComponentCard({
               </div>
             )}
             {isLinked ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 border border-black dark:border-white bg-green-50 dark:bg-green-950">
-                <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
-                <span className="text-xs font-mono font-bold text-green-600 dark:text-green-400">
-                  LINKED
-                </span>
-              </div>
+              <>
+                <RepoStatsBadge owner={component.repoLink!.owner} repo={component.repoLink!.repo} />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 border border-black dark:border-white bg-green-50 dark:bg-green-950">
+                  <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
+                  <span className="text-xs font-mono font-bold text-green-600 dark:text-green-400">
+                    LINKED
+                  </span>
+                </div>
+              </>
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 border border-black dark:border-white bg-red-50 dark:bg-red-950">
                 <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full"></span>

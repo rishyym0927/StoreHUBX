@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"crypto/rand"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rishyym0927/storehubx/internal/db"
+	githubapi "github.com/rishyym0927/storehubx/internal/github"
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,11 +25,12 @@ func generateWebhookSecret() string {
 }
 
 type linkPayload struct {
-	Owner  string `json:"owner"`
-	Repo   string `json:"repo"`
-	Path   string `json:"path"`
-	Ref    string `json:"ref"`
-	Commit string `json:"commit"`
+	Owner  string   `json:"owner"`
+	Repo   string   `json:"repo"`
+	Path   string   `json:"path"`
+	Ref    string   `json:"ref"`
+	Commit string   `json:"commit"`
+	Tags   []string `json:"tags"`
 }
 
 func LinkComponentRepo(c *fiber.Ctx) error {
@@ -55,26 +58,66 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 
 	var existing models.Component
 	webhookSecret := ""
+	foundExisting := false
 	if err := col.FindOne(ctx, filter).Decode(&existing); err == nil {
 		webhookSecret = existing.RepoLink.WebhookSecret
+		foundExisting = true
 	}
 	if webhookSecret == "" {
 		webhookSecret = generateWebhookSecret()
 	}
 
-	update := bson.M{
-		"$set": bson.M{
-			"repoLink": bson.M{
-				"owner":         body.Owner,
-				"repo":          body.Repo,
-				"path":          body.Path,
-				"ref":           body.Ref,
-				"commit":        body.Commit,
-				"webhookSecret": webhookSecret,
-			},
-			"updatedAt": time.Now(),
+	setFields := bson.M{
+		"repoLink": bson.M{
+			"owner":         body.Owner,
+			"repo":          body.Repo,
+			"path":          body.Path,
+			"ref":           body.Ref,
+			"commit":        body.Commit,
+			"webhookSecret": webhookSecret,
 		},
+		"updatedAt": time.Now(),
 	}
+
+	// Best-effort autofill: only fill in description/license from GitHub
+	// when the component doesn't already have its own (never clobber a
+	// user's manual entry). A GitHub fetch failure here shouldn't block
+	// linking, so errors are swallowed.
+	if foundExisting && (existing.Description == "" || existing.License == "") {
+		if token, tokErr := githubapi.GetUserGitHubToken(c); tokErr == nil {
+			if info, infoErr := githubapi.FetchRepoInfo(token, body.Owner, body.Repo); infoErr == nil {
+				if existing.Description == "" && info.Description != "" {
+					setFields["description"] = info.Description
+				}
+				if existing.License == "" && info.License != nil && info.License.SpdxID != "" && !strings.EqualFold(info.License.SpdxID, "NOASSERTION") {
+					setFields["license"] = info.License.SpdxID
+				}
+			}
+		}
+	}
+
+	// Item 46: merge any GitHub-topic tags the user picked in the link UI
+	// into the component's existing tags (union, deduped) rather than
+	// overwriting manually-entered ones.
+	if len(body.Tags) > 0 {
+		seen := make(map[string]bool, len(existing.Tags)+len(body.Tags))
+		merged := make([]string, 0, len(existing.Tags)+len(body.Tags))
+		for _, t := range existing.Tags {
+			if t != "" && !seen[t] {
+				seen[t] = true
+				merged = append(merged, t)
+			}
+		}
+		for _, t := range body.Tags {
+			if t != "" && !seen[t] {
+				seen[t] = true
+				merged = append(merged, t)
+			}
+		}
+		setFields["tags"] = merged
+	}
+
+	update := bson.M{"$set": setFields}
 
 	// Use UpdateOne to inspect counts
 	res, err := col.UpdateOne(ctx, filter, update)
