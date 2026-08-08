@@ -1,5 +1,7 @@
 # StoreHUBX Roadmap
 
+**Status: all 4 phases (24 items) complete.** This file is kept as a historical record of what was built and why — each checked item's sub-bullet notes the actual implementation (file paths, key decisions), which is often more accurate than re-deriving it from a diff. Starting a new phase of work? Add a new `## Phase 5 — ...` section below rather than repurposing this one.
+
 Working list of fixes, improvements, and features, ordered for execution. Work top to bottom within a phase; phases are ordered by dependency (don't scale or extend a broken/unfinished product).
 
 **How to use this with Claude Code:** start a fresh session (or `/clear`) per item below. Reference the item by number/name instead of re-explaining it — e.g. "work on Phase 1, item 2." Commit after each item is done and verified so progress persists independent of conversation history.
