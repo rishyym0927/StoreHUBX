@@ -24,11 +24,16 @@ Working list of fixes, improvements, and features, ordered for execution. Work t
 
 ## Phase 3 — System design / scaling
 
-- [ ] **6. Add retry + exponential backoff for failed build jobs** — builds directly on the per-job timeout added recently; currently a failed job just dies with no retry.
-- [ ] **7. Add a caching layer (Redis) in front of `GET /components` and `GET /components/:slug`** — read-heavy, write-rare endpoints.
-- [ ] **8. Move the build queue off Mongo polling** onto a real queue (Redis/RabbitMQ/SQS) — reduces DB load, adds proper at-least-once delivery semantics.
-- [ ] **9. Put a CDN in front of MinIO/S3** for built component bundles — improves preview load time.
-- [ ] **10. Add build pipeline observability/metrics** (success/failure rate, queue depth, build duration) — currently just a console heartbeat print.
+- [x] **6. Add retry + exponential backoff for failed build jobs** — builds directly on the per-job timeout added recently; currently a failed job just dies with no retry.
+  - Added `Attempts`/`MaxAttempts`/`NextAttemptAt` to `BuildJob`; `worker.fail()` now requeues with `10s * 2^attempt` backoff (capped at 2m) up to `MaxAttempts` (default 3) before setting `BuildError`.
+- [x] **7. Add a caching layer (Redis) in front of `GET /components` and `GET /components/:slug`** — read-heavy, write-rare endpoints.
+  - New `internal/cache` package (self-hosted Redis via docker-compose). List cache invalidates via an epoch counter bumped on any component write; per-slug cache invalidates on likes/repo-link changes and on new unique visitors. Degrades gracefully to no-cache if Redis is unreachable.
+- [x] **8. Move the build queue off Mongo polling** onto a real queue (Redis/RabbitMQ/SQS) — reduces DB load, adds proper at-least-once delivery semantics.
+  - `EnqueueBuild`/`AddVersion`/`AutoDeploy` now `XADD` to a `builds:stream` Redis Stream; the worker blocks on `XREADGROUP` for near-instant pickup, with a slower (30s) Mongo poll kept as a fallback sweep for retries and dropped messages. Falls back entirely to the original fast poll when Redis isn't configured.
+- [x] **9. Put a CDN in front of MinIO/S3** for built component bundles — improves preview load time.
+  - `s3.go`'s `publicURL()` now honors `CDN_BASE_URL` when set. Code-side only — actually fronting MinIO with a CDN (e.g. Cloudflare) requires a domain/account on the user's side.
+- [x] **10. Add build pipeline observability/metrics** (success/failure rate, queue depth, build duration) — currently just a console heartbeat print.
+  - New `internal/metrics` package (Prometheus client) exposing `GET /metrics`; instrumented in the worker's success/fail paths and heartbeat. Added self-hosted `prometheus`+`grafana` services to `docker-compose.yml`.
 
 ## Phase 4 — New features
 
