@@ -63,8 +63,13 @@ export default async function ComponentDetail({
             {/* Component Title and Description */}
             <div className="space-y-4">
               <div className="border-b-2 border-black dark:border-white pb-4 flex items-start justify-between">
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-3 flex-wrap">
                   {comp.name}
+                  {comp.visibility === "private" && (
+                    <span className="text-xs px-2 py-1 border-2 border-black dark:border-white font-mono font-bold uppercase align-middle">
+                      Private
+                    </span>
+                  )}
                 </h1>
                 <LikeButton 
                    slug={comp.slug} 
@@ -131,10 +136,12 @@ export default async function ComponentDetail({
 
             {/* Owner Actions (only visible to owner) */}
             <div className="pt-4 border-t-2 border-black dark:border-white">
-              <OwnerActions 
+              <OwnerActions
                 ownerId={comp.ownerId}
                 componentSlug={comp.slug}
                 isLinked={!!(comp.repoLink && comp.repoLink.owner && comp.repoLink.repo)}
+                visibility={comp.visibility}
+                collaborators={comp.collaborators}
               />
             </div>
           </div>

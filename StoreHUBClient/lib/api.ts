@@ -202,6 +202,50 @@ export const componentApi = {
     );
     return response;
   },
+
+  /**
+   * Update a component's visibility (public/private), owner-only
+   */
+  async updateVisibility(slug: string, visibility: "public" | "private", authToken: string) {
+    const response = await apiFetch<{ message: string; visibility: string }>(
+      `/api/components/${slug}/visibility`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ visibility }),
+        authToken,
+      }
+    );
+    return response;
+  },
+
+  /**
+   * Add a collaborator (by providerId), owner-only
+   */
+  async addCollaborator(slug: string, userId: string, authToken: string) {
+    const response = await apiFetch<{ message: string; component: Component }>(
+      `/api/components/${slug}/collaborators`,
+      {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+        authToken,
+      }
+    );
+    return response.component;
+  },
+
+  /**
+   * Remove a collaborator, owner-only
+   */
+  async removeCollaborator(slug: string, userId: string, authToken: string) {
+    const response = await apiFetch<{ message: string; component: Component }>(
+      `/api/components/${slug}/collaborators/${userId}`,
+      {
+        method: "DELETE",
+        authToken,
+      }
+    );
+    return response.component;
+  },
 };
 
 // ========================================

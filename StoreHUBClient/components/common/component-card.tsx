@@ -36,7 +36,12 @@ export function ComponentCard({
           </Link>
 
           {/* Status Badge */}
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-2">
+            {component.visibility === "private" && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 border border-black dark:border-white">
+                <span className="text-xs font-mono font-bold">PRIVATE</span>
+              </div>
+            )}
             {isLinked ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 border border-black dark:border-white bg-green-50 dark:bg-green-950">
                 <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>

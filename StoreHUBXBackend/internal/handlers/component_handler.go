@@ -56,6 +56,12 @@ func CreateComponent(c *fiber.Ctx) error {
 	body.Slug = strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
 	body.LikedBy = []string{}
 	body.UniqueVisitors = []string{}
+	if body.Visibility != "private" {
+		body.Visibility = "public"
+	}
+	if body.Collaborators == nil {
+		body.Collaborators = []string{}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -104,7 +110,8 @@ func GetAllComponents(c *fiber.Ctx) error {
 		return c.SendString(fmt.Sprintf(`{"success":true,"data":%s}`, cached))
 	}
 
-	filter := bson.M{}
+	// Public listing never surfaces private components, regardless of caller.
+	filter := bson.M{"visibility": bson.M{"$ne": "private"}}
 	if q != "" {
 		filter["$text"] = bson.M{"$search": q}
 	}
@@ -200,8 +207,9 @@ func GetComponent(c *fiber.Ctx) error {
 	}
 
 	// Track the visitor on every request (needed for accurate unique-visitor
-	// counts), but only decode+cache the full document when it actually
-	// changes — repeat visitors within the cache TTL are served from Redis.
+	// counts). Private components need an authorization check against the
+	// full document on every request, so the Redis fast-path (serving a
+	// cached copy without decoding) is only used for public components.
 	res, err := col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{
 		"$addToSet": bson.M{"uniqueVisitors": visitorID},
 	})
@@ -212,8 +220,11 @@ func GetComponent(c *fiber.Ctx) error {
 	cacheKey := componentSlugCacheKey(slug)
 	if res.ModifiedCount == 0 {
 		if cached, hit := cache.Get(ctx, cacheKey); hit {
-			c.Set("Content-Type", "application/json")
-			return c.SendString(fmt.Sprintf(`{"success":true,"data":{"component":%s}}`, cached))
+			var cachedComp models.Component
+			if err := json.Unmarshal([]byte(cached), &cachedComp); err == nil && cachedComp.Visibility != "private" {
+				c.Set("Content-Type", "application/json")
+				return c.SendString(fmt.Sprintf(`{"success":true,"data":{"component":%s}}`, cached))
+			}
 		}
 	}
 
@@ -222,16 +233,34 @@ func GetComponent(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
+	}
+
 	// Ensure viewCount accurately reflects unique visitors
 	comp.ViewCount = len(comp.UniqueVisitors)
 
-	if compBytes, err := json.Marshal(comp); err == nil {
-		cache.Set(ctx, cacheKey, string(compBytes), componentSlugCacheTTL)
+	if comp.Visibility != "private" {
+		if compBytes, err := json.Marshal(comp); err == nil {
+			cache.Set(ctx, cacheKey, string(compBytes), componentSlugCacheTTL)
+		}
 	}
 
 	return utils.Success(c, fiber.Map{
 		"component": comp,
 	})
+}
+
+func contains(list []string, target string) bool {
+	for _, v := range list {
+		if v == target {
+			return true
+		}
+	}
+	return false
 }
 
 //

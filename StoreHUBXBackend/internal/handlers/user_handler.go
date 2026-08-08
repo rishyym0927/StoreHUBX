@@ -83,10 +83,21 @@ func GetProfileById(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "user not found")
 	}
 
-	// Fetch all components belonging to this user
+	// Fetch this user's components. A private component only shows up for
+	// the owner themselves or a listed collaborator - everyone else sees
+	// only their public ones.
+	viewerID, _ := c.Locals("user_id").(string)
+	filter := bson.M{"ownerId": providerId}
+	if viewerID != providerId {
+		filter["$or"] = []bson.M{
+			{"visibility": bson.M{"$ne": "private"}},
+			{"collaborators": viewerID},
+		}
+	}
+
 	componentCol := db.Client.Database("storehub").Collection("components")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId}, opts)
+	cursor, err := componentCol.Find(ctx, filter, opts)
 	if err != nil {
 		return utils.Error(c, 500, "failed to fetch components")
 	}

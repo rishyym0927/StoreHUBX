@@ -23,7 +23,8 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Components (public reads)
 	app.Get("/components", handlers.GetAllComponents)
-	app.Get("/components/:slug", handlers.GetComponent)
+	// OptionalAuth so an owner/collaborator can view their own private component
+	app.Get("/components/:slug", middleware.OptionalAuth, handlers.GetComponent)
 	app.Get("/components/:slug/versions", handlers.GetComponentVersions)
 	app.Get("/components/:slug/comments", handlers.GetComments)
 	app.Get("/components/:slug/ratings", handlers.ListRatings)
@@ -62,13 +63,19 @@ func RegisterRoutes(app *fiber.App) {
 	// Webhook config (Phase 4.12)
 	api.Get("/components/:slug/webhook", handlers.GetWebhookConfig)
 
+	// Visibility / team access (Phase 4.14)
+	api.Patch("/components/:slug/visibility", handlers.UpdateVisibility)
+	api.Post("/components/:slug/collaborators", handlers.AddCollaborator)
+	api.Delete("/components/:slug/collaborators/:userId", handlers.RemoveCollaborator)
+
 	//phase 4.4
 	api.Post("/components/:slug/versions/:version/build", handlers.EnqueueBuild)
 
 	// Authenticated profile
 	api.Get("/me", handlers.GetProfile)
-	// Get user profile by ID (for public viewing)
-	app.Get("/users/:id", handlers.GetProfileById)
+	// Get user profile by ID (for public viewing; OptionalAuth to reveal the
+	// viewer's own private/collaborator components on that profile)
+	app.Get("/users/:id", middleware.OptionalAuth, handlers.GetProfileById)
 
 	// GitHub browsing (Phase 4.2)
 	gh := api.Group("/github")

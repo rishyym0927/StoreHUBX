@@ -26,6 +26,9 @@ type Component struct {
 	AverageRating float64 `bson:"averageRating" json:"averageRating"`
 	RatingCount   int     `bson:"ratingCount" json:"ratingCount"`
 
+	Visibility    string   `bson:"visibility" json:"visibility"` // "public" | "private"
+	Collaborators []string `bson:"collaborators" json:"collaborators"`
+
 	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
 }

@@ -1,45 +1,88 @@
 "use client";
 
-import { userApi } from "@/lib/api";
+import { componentApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
 import Link from "next/link";
-import React from "react";
+import { useState } from "react";
+import { Lock } from "lucide-react";
 
 interface OwnerActionsProps {
   ownerId: string;
   componentSlug: string;
   isLinked: boolean;
+  visibility?: "public" | "private";
+  collaborators?: string[];
 }
 
-export function OwnerActions({ ownerId, componentSlug, isLinked }: OwnerActionsProps) {
-  
-  const token = useAuth((s) => s.token);
-  const [isOwner, setIsOwner] = React.useState(false);
+export function OwnerActions({
+  ownerId,
+  componentSlug,
+  isLinked,
+  visibility: initialVisibility = "public",
+  collaborators: initialCollaborators = [],
+}: OwnerActionsProps) {
+  const { token, user } = useAuth();
+  const isOwner = !!(user && token && user.id === ownerId);
 
-  React.useEffect(() => {
-    async function checkOwnership() {
-      if (token) {
-        const userProfile = await userApi.getProfile(token);
-        setIsOwner(userProfile.user.providerId === ownerId);
-      }
-    }
-    checkOwnership();
-  }, [token, ownerId]);
+  const [visibility, setVisibility] = useState(initialVisibility);
+  const [collaborators, setCollaborators] = useState(initialCollaborators);
+  const [newCollaborator, setNewCollaborator] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  
-
-  console.log("isOwner:", isOwner, token, ownerId);
-
-  // If not owner or not logged in, don't show any actions
   if (!isOwner) {
     return (
       <div className="text-center py-6">
-        <p className="text-sm font-mono text-black/60 dark:text-white/60">
-          🔒 Only the component owner can manage this component
+        <p className="text-sm font-mono text-black/60 dark:text-white/60 flex items-center justify-center gap-1.5">
+          <Lock className="w-4 h-4" /> Only the component owner can manage this component
         </p>
       </div>
     );
   }
+
+  const toggleVisibility = async () => {
+    if (!token) return;
+    const next = visibility === "public" ? "private" : "public";
+    setUpdating(true);
+    setError(null);
+    try {
+      await componentApi.updateVisibility(componentSlug, next, token);
+      setVisibility(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update visibility");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const addCollaborator = async () => {
+    if (!token || !newCollaborator.trim()) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      const updated = await componentApi.addCollaborator(componentSlug, newCollaborator.trim(), token);
+      setCollaborators(updated.collaborators || []);
+      setNewCollaborator("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add collaborator");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const removeCollaborator = async (userId: string) => {
+    if (!token) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      const updated = await componentApi.removeCollaborator(componentSlug, userId, token);
+      setCollaborators(updated.collaborators || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove collaborator");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -49,7 +92,7 @@ export function OwnerActions({ ownerId, componentSlug, isLinked }: OwnerActionsP
       >
         {isLinked ? "Change Repository" : "Link GitHub"}
       </Link>
-      
+
       {isLinked && (
         <Link
           href={`/components/${componentSlug}/new-version`}
@@ -58,6 +101,58 @@ export function OwnerActions({ ownerId, componentSlug, isLinked }: OwnerActionsP
           Add New Version
         </Link>
       )}
+
+      <div className="border-2 border-black dark:border-white p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-xs font-mono font-bold uppercase">Visibility</span>
+          <button
+            onClick={toggleVisibility}
+            disabled={updating}
+            className="px-3 py-1.5 border-2 border-black dark:border-white text-xs font-mono font-bold uppercase transition-colors hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black disabled:opacity-50"
+          >
+            {visibility === "private" ? "Private" : "Public"}
+          </button>
+        </div>
+
+        {visibility === "private" && (
+          <div className="space-y-2 pt-3 border-t border-black/20 dark:border-white/20">
+            <span className="text-xs font-mono font-bold uppercase block">Collaborators</span>
+            {collaborators.length > 0 && (
+              <ul className="space-y-1">
+                {collaborators.map((cid) => (
+                  <li key={cid} className="flex items-center justify-between text-xs font-mono">
+                    <span className="truncate">{cid}</span>
+                    <button
+                      onClick={() => removeCollaborator(cid)}
+                      disabled={updating}
+                      className="text-red-600 dark:text-red-400 font-bold hover:underline shrink-0 ml-2"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <input
+                value={newCollaborator}
+                onChange={(e) => setNewCollaborator(e.target.value)}
+                placeholder="GitHub provider ID"
+                className="flex-1 min-w-0 px-2 py-1.5 border-2 border-black dark:border-white bg-transparent text-xs font-mono focus:outline-none"
+              />
+              <button
+                onClick={addCollaborator}
+                disabled={updating || !newCollaborator.trim()}
+                className="px-3 py-1.5 border-2 border-black dark:border-white text-xs font-mono font-bold uppercase disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-xs font-mono text-red-600 dark:text-red-400">{error}</p>}
+      </div>
     </div>
   );
 }
