@@ -57,7 +57,7 @@ export default async function ComponentDetail({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 sm:gap-12">
           {/* Left Column - User & Component Info */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 min-w-0">
             {/* Component Title and Description */}
             <div className="space-y-4">
               <div className="border-b-2 border-black dark:border-white pb-4 flex items-start justify-between">
@@ -120,13 +120,8 @@ export default async function ComponentDetail({
               </div>
             </div>
 
-            {/* Install Command */}
-            {versions.length > 0 && (
-              <InstallCommand 
-                componentSlug={comp.slug} 
-                version={versions[0]?.version}
-              />
-            )}
+            {/* Clone Repository Command */}
+            <InstallCommand repoLink={comp.repoLink} />
 
             {/* Owner Actions (only visible to owner) */}
             <div className="pt-4 border-t-2 border-black dark:border-white">
@@ -139,7 +134,7 @@ export default async function ComponentDetail({
           </div>
 
           {/* Right Column - Tabs with Versions, Preview & Builds */}
-          <div className="lg:col-span-3 space-y-8">
+          <div className="lg:col-span-3 space-y-8 min-w-0">
             {/* Component Details Card */}
             <div className="border-2 border-black dark:border-white p-6 bg-white dark:bg-black">
               <h2 className="text-xl font-bold mb-4 pb-3 border-b border-black dark:border-white">
@@ -147,7 +142,7 @@ export default async function ComponentDetail({
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Details Column */}
-                <div className="space-y-4">
+                <div className="space-y-4 min-w-0">
                   {/* Frameworks */}
                   {comp.frameworks && comp.frameworks.length > 0 && (
                     <div>
@@ -208,7 +203,7 @@ export default async function ComponentDetail({
                 </div>
 
                 {/* Right Details Column */}
-                <div className="space-y-4">
+                <div className="space-y-4 min-w-0">
                   {/* Repository Info */}
                   {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
                     <RepositoryInfo repoLink={comp.repoLink} />

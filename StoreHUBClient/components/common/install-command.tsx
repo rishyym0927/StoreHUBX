@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { RepoLink } from "@/types";
 
 interface InstallCommandProps {
-  componentSlug: string;
-  version?: string;
+  repoLink?: RepoLink;
 }
 
-export function InstallCommand({ componentSlug, version }: InstallCommandProps) {
+export function InstallCommand({ repoLink }: InstallCommandProps) {
   const [copied, setCopied] = useState(false);
-  const versionStr = version ? `@${version}` : "@latest";
-  const command = `npx storehubx install ${componentSlug}${versionStr}`;
+
+  if (!repoLink || !repoLink.owner || !repoLink.repo) {
+    return null;
+  }
+
+  const command = `git clone https://github.com/${repoLink.owner}/${repoLink.repo}.git`;
 
   const handleCopy = async () => {
     try {
@@ -25,7 +29,7 @@ export function InstallCommand({ componentSlug, version }: InstallCommandProps) 
   return (
     <div className="space-y-2 pb-4 border-b border-black dark:border-white">
       <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">
-        Install Command
+        Clone Repository
       </div>
       <div className="relative group">
         <div className="font-mono text-xs bg-black dark:bg-white text-white dark:text-black p-3 pr-20 rounded border border-black dark:border-white overflow-x-auto">

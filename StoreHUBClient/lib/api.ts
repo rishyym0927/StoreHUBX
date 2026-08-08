@@ -321,22 +321,22 @@ export const buildApi = {
   },
 
   /**
-   * Get build status by ID (requires auth)
+   * Get build status by ID (public read)
    */
-  async getStatus(buildId: string, authToken: string) {
+  async getStatus(buildId: string, authToken?: string) {
     const response = await apiFetch<BuildStatusResponse>(
-      `/api/builds/${buildId}`,
+      `/builds/${buildId}`,
       { authToken }
     );
     return response.build;
   },
 
   /**
-   * List all builds for a component version (requires auth)
+   * List all builds for a component version (public read)
    */
-  async list(slug: string, version: string, authToken: string) {
+  async list(slug: string, version: string, authToken?: string) {
     const response = await apiFetch<{ builds: BuildJob[] }>(
-      `/api/components/${slug}/versions/${version}/builds`,
+      `/components/${slug}/versions/${version}/builds`,
       { authToken }
     );
     return response.builds;

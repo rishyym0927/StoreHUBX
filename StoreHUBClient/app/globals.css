@@ -20,8 +20,9 @@
   color-scheme: dark;
 }
 
-html, body { 
+html, body {
   height: 100%;
+  overflow-x: hidden;
   font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'Courier New', monospace;
 }
 

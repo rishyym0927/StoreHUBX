@@ -6,6 +6,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func EnsureIndexes(client *mongo.Client) error {
@@ -18,6 +19,20 @@ func EnsureIndexes(client *mongo.Client) error {
 	_, _ = db.Collection("components").Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "slug", Value: 1}},
 		Options: nil,
+	})
+
+	// components: weighted text index for search relevance (name > tags > description)
+	_, _ = db.Collection("components").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "name", Value: "text"},
+			{Key: "tags", Value: "text"},
+			{Key: "description", Value: "text"},
+		},
+		Options: options.Index().SetWeights(bson.D{
+			{Key: "name", Value: 10},
+			{Key: "tags", Value: 5},
+			{Key: "description", Value: 1},
+		}).SetName("components_text_search"),
 	})
 
 	// component_versions: componentId + version unique

@@ -11,6 +11,7 @@ import (
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -76,11 +77,7 @@ func GetAllComponents(c *fiber.Ctx) error {
 
 	filter := bson.M{}
 	if q != "" {
-		filter["$or"] = []bson.M{
-			{"name": bson.M{"$regex": q, "$options": "i"}},
-			{"description": bson.M{"$regex": q, "$options": "i"}},
-			{"tags": bson.M{"$elemMatch": bson.M{"$regex": q, "$options": "i"}}},
-		}
+		filter["$text"] = bson.M{"$search": q}
 	}
 	if framework != "" {
 		filter["frameworks"] = framework
@@ -98,21 +95,41 @@ func GetAllComponents(c *fiber.Ctx) error {
 		}
 	}
 
-	opts := options.Find().
-		SetSkip(int64(skip)).
-		SetLimit(int64(limit)).
-		SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
-
-	cursor, err := col.Find(ctx, filter, opts)
-	if err != nil {
-		return utils.Error(c, 500, "database error")
-	}
-	defer cursor.Close(ctx)
-
 	// IMPORTANT: pre-init so it marshals as [] not null
 	components := make([]models.Component, 0, limit)
-	if err := cursor.All(ctx, &components); err != nil {
-		return utils.Error(c, 500, "failed to decode components")
+
+	if q != "" {
+		// Rank by text relevance when searching (requires the $meta score
+		// field to be added via aggregation so all other fields survive).
+		pipeline := mongo.Pipeline{
+			{{Key: "$match", Value: filter}},
+			{{Key: "$addFields", Value: bson.M{"score": bson.M{"$meta": "textScore"}}}},
+			{{Key: "$sort", Value: bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}}}},
+			{{Key: "$skip", Value: int64(skip)}},
+			{{Key: "$limit", Value: int64(limit)}},
+		}
+		cursor, err := col.Aggregate(ctx, pipeline)
+		if err != nil {
+			return utils.Error(c, 500, "database error")
+		}
+		defer cursor.Close(ctx)
+		if err := cursor.All(ctx, &components); err != nil {
+			return utils.Error(c, 500, "failed to decode components")
+		}
+	} else {
+		opts := options.Find().
+			SetSkip(int64(skip)).
+			SetLimit(int64(limit)).
+			SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
+
+		cursor, err := col.Find(ctx, filter, opts)
+		if err != nil {
+			return utils.Error(c, 500, "database error")
+		}
+		defer cursor.Close(ctx)
+		if err := cursor.All(ctx, &components); err != nil {
+			return utils.Error(c, 500, "failed to decode components")
+		}
 	}
 
 	total, err := col.CountDocuments(ctx, filter)

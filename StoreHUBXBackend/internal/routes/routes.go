@@ -27,6 +27,10 @@ func RegisterRoutes(app *fiber.App) {
 	app.Get("/components/:slug/versions", handlers.GetComponentVersions)
 	app.Get("/components/:slug/comments", handlers.GetComments)
 
+	// Builds (public reads)
+	app.Get("/builds/:id", handlers.GetBuild)
+	app.Get("/components/:slug/versions/:version/builds", handlers.ListBuildsForVersion)
+
 	// Preview (public access)
 	app.Get("/preview/:slug/:version", handlers.RedirectPreview)
 
@@ -51,8 +55,6 @@ func RegisterRoutes(app *fiber.App) {
 
 	//phase 4.4
 	api.Post("/components/:slug/versions/:version/build", handlers.EnqueueBuild)
-	api.Get("/builds/:id", handlers.GetBuild)
-	api.Get("/components/:slug/versions/:version/builds", handlers.ListBuildsForVersion)
 
 	// Authenticated profile
 	api.Get("/me", handlers.GetProfile)

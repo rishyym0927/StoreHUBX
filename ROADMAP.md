@@ -8,14 +8,19 @@ Working list of fixes, improvements, and features, ordered for execution. Work t
 
 ## Phase 1 — Critical fixes (do first, highest visibility)
 
-- [ ] **1. Fix horizontal overflow on Browse and Component Detail pages** — filter panel, badges, and stats are clipped off the right edge of the viewport. Likely a missing `max-width`/`overflow-x` constraint on a container. Verify visually in-browser, not just via diff, since this bug is invisible in code review.
-- [ ] **2. Fix Builds tab showing "No builds yet" for components with completed successful builds** — data mismatch between `ListBuildsForVersion` query and stored build records. Check version-string matching / field names.
+- [x] **1. Fix horizontal overflow on Browse and Component Detail pages** — filter panel, badges, and stats are clipped off the right edge of the viewport. Likely a missing `max-width`/`overflow-x` constraint on a container. Verify visually in-browser, not just via diff, since this bug is invisible in code review.
+  - Added `overflow-x: hidden` to `html, body` in `StoreHUBClient/app/globals.css`; added `min-w-0` to the grid-column divs in `app/components/[slug]/page.tsx` that lacked it.
+- [x] **2. Fix Builds tab showing "No builds yet" for components with completed successful builds** — data mismatch between `ListBuildsForVersion` query and stored build records. Check version-string matching / field names.
+  - Actual cause: `GET /builds/:id` and `GET /components/:slug/versions/:version/builds` required JWT auth; frontend silently treated 401/no-token as an empty list. Moved both routes to the public group in `internal/routes/routes.go` and made `authToken` optional in `buildApi`/`useBuilds`/`useBuildStatus`.
 
 ## Phase 2 — Implementation improvements (existing features)
 
-- [ ] **3. Stream build logs live in the UI** — backend already pushes rich step-by-step logs (`[STEP]`, `[DEBUG]`, `[SUCCESS]`) to `BuildJob.logs`; currently unused by the frontend. Poll or stream this while a build runs.
-- [ ] **4. Fix or remove the "Install command" widget** (`npx storehubx install ...`) — implies a real CLI that doesn't exist; either build a minimal real CLI or relabel/remove it.
-- [ ] **5. Improve search relevance** — replace `$regex` scan over name/description/tags with a Mongo text index (or dedicated search service) for real ranking and typo tolerance.
+- [x] **3. Stream build logs live in the UI** — backend already pushes rich step-by-step logs (`[STEP]`, `[DEBUG]`, `[SUCCESS]`) to `BuildJob.logs`; currently unused by the frontend. Poll or stream this while a build runs.
+  - `useBuilds` now polls every 3s while any build in the list is `queued`/`running`, refreshing status and logs until resolved.
+- [x] **4. Fix or remove the "Install command" widget** (`npx storehubx install ...`) — implies a real CLI that doesn't exist; either build a minimal real CLI or relabel/remove it.
+  - Replaced with a real `git clone https://github.com/<owner>/<repo>.git` command sourced from the component's linked repo (`components/common/install-command.tsx`); only renders when a repo is actually linked.
+- [x] **5. Improve search relevance** — replace `$regex` scan over name/description/tags with a Mongo text index (or dedicated search service) for real ranking and typo tolerance.
+  - Added a weighted text index (name > tags > description) in `internal/db/indexes.go`; `GetAllComponents` now uses `$text`/`$search` via an aggregation pipeline sorted by `textScore` when `q` is set, falling back to `createdAt desc` otherwise.
 
 ## Phase 3 — System design / scaling
 

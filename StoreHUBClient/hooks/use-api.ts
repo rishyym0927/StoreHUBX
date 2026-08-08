@@ -182,7 +182,7 @@ export function useBuildStatus(
   });
 
   const fetchBuild = useCallback(async () => {
-    if (!buildId || !token) {
+    if (!buildId) {
       setState({ data: null, loading: false, error: null });
       return;
     }
@@ -190,7 +190,7 @@ export function useBuildStatus(
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const build = await buildApi.getStatus(buildId, token);
+      const build = await buildApi.getStatus(buildId, token ?? undefined);
       setState({ data: build, loading: false, error: null });
     } catch (err) {
       const errorMessage =
@@ -204,19 +204,18 @@ export function useBuildStatus(
   }, [buildId, token]);
 
   useEffect(() => {
-    if (!buildId || !token) return;
-    
+    if (!buildId) return;
+
     fetchBuild();
 
     // Auto-refresh for pending builds
     if (autoRefresh) {
       const interval = setInterval(async () => {
-        // Only fetch if we need to check status
-        if (buildId && token) {
+        if (buildId) {
           try {
-            const build = await buildApi.getStatus(buildId, token);
+            const build = await buildApi.getStatus(buildId, token ?? undefined);
             setState({ data: build, loading: false, error: null });
-            
+
             // Stop polling if build is complete
             if (build.status === "success" || build.status === "error") {
               clearInterval(interval);
@@ -231,7 +230,7 @@ export function useBuildStatus(
             setState({ data: null, loading: false, error: errorMessage });
           }
         }
-      }, 5000); // Poll every 5 seconds
+      }, 3000); // Poll every 3 seconds for live log updates
 
       return () => clearInterval(interval);
     }
@@ -258,7 +257,7 @@ export function useBuilds(
   });
 
   const fetchBuilds = useCallback(async () => {
-    if (!slug || !version || !token) {
+    if (!slug || !version) {
       setState({ data: null, loading: false, error: null });
       return;
     }
@@ -266,7 +265,7 @@ export function useBuilds(
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const builds = await buildApi.list(slug, version, token);
+      const builds = await buildApi.list(slug, version, token ?? undefined);
       setState({ data: builds, loading: false, error: null });
     } catch (err) {
       const errorMessage =
@@ -280,8 +279,46 @@ export function useBuilds(
   }, [slug, version, token]);
 
   useEffect(() => {
-    fetchBuilds();
-  }, [fetchBuilds]);
+    if (!slug || !version) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const builds = await buildApi.list(slug, version, token ?? undefined);
+        if (cancelled) return;
+        setState({ data: builds, loading: false, error: null });
+      } catch (err) {
+        if (cancelled) return;
+        const errorMessage =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+            ? err.message
+            : "Failed to fetch builds";
+        setState({ data: null, loading: false, error: errorMessage });
+      }
+    };
+
+    poll();
+
+    // Keep polling while any build is still queued/running, so the
+    // list picks up live status/log updates without a manual refresh.
+    const interval = setInterval(() => {
+      setState((prev) => {
+        const hasActiveBuild = prev.data?.some(
+          (b) => b.status === "queued" || b.status === "running"
+        );
+        if (hasActiveBuild) poll();
+        return prev;
+      });
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [slug, version, token]);
 
   return {
     ...state,
