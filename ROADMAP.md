@@ -42,6 +42,18 @@ Working list of fixes, improvements, and features, ordered for execution. Work t
 - [ ] **13. Build caching by commit SHA** — skip rebuilding when the same commit is redeployed.
 - [ ] **14. Private/team components** — visibility control beyond fully public.
 - [ ] **15. Usage analytics dashboard** for component owners — view/like data is already tracked, just not visualized.
+- [ ] **16. Set up Grafana dashboards for the Prometheus metrics from item 10** — Prometheus+Grafana are already running (`docker compose up`) and `/metrics` is exposing data, but no dashboard exists yet to actually look at it. Steps: open `http://localhost:3001` (admin/admin), add a Prometheus data source pointing at `http://prometheus:9090` (the in-network service name, not localhost), then create panels for `storehubx_builds_total` (rate, split by `status`), `storehubx_build_queue_depth` (gauge over time), and `storehubx_build_duration_seconds` (histogram/heatmap). Save it as a dashboard JSON under `StoreHUBXBackend/grafana/` so it's provisioned automatically instead of manually re-built every time `docker compose down -v` wipes the `grafana_data` volume.
+
+### UI polish (brutalist black/white style — keep borders, hard shadows, mono font; no redesign)
+
+- [ ] **17. Fix hardcoded `loggedInUserId` placeholder** in `app/components/page.tsx` (currently `"user-id-placeholder"`, marked TODO) — owner-only actions on the Browse page likely never activate correctly because of this.
+- [ ] **18. Extract a reusable Badge/Tag chip component** — tag pills and framework chips are currently one-off `<span>` markup repeated across `component-card.tsx`, `[slug]/page.tsx`, and `components/page.tsx`; consolidate into one component using the existing border/mono-font style.
+- [ ] **19. Dedupe pagination** — `components/common/pagination.tsx` already exists but `app/components/page.tsx` and `(private)/me/page.tsx` each hand-roll their own near-identical pagination controls instead of using it.
+- [ ] **20. Replace ad-hoc emoji icons with a consistent icon set** — cards/pages mix emoji (🔍📦🎨⭐📍) with inline SVGs (GitHub/branch/commit icons); pick one (e.g. `lucide-react`, thin-stroke icons read well against the mono/brutalist style) and use it everywhere.
+- [ ] **21. Resolve or remove the commented-out "Show Live Preview" toggle** on the home page (`app/page.tsx`) — currently dead code; either finish wiring it up or delete it.
+- [ ] **22. Reconcile the two conflicting design-token sources** — `app/globals.css` (Tailwind v4, `--radius-xl: 0`, sharp corners) vs. the legacy `tailwind.config.js` (Tailwind v3-style, `borderRadius.xl: 1rem`) disagree on the signature "sharp corners" look; the config file appears to be leftover and should be removed once confirmed unused.
+- [ ] **23. Broaden loading/empty states beyond the single pulse skeleton** — Browse grid and profile pages currently show a minimal centered emoji+text empty state; add skeleton cards matching the real card's border/shadow shape for a less jarring loading flash.
+- [ ] **24. Align `app/users/[id]/page.tsx` with `lib/api.ts`** — it currently hand-rolls its own fetch/error parsing instead of using the existing `userApi` client used elsewhere, which is both a consistency and a maintainability issue.
 
 ---
 
