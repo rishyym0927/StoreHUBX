@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
@@ -14,6 +17,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const (
+	componentListCacheTTL = 30 * time.Second
+	componentSlugCacheTTL = 15 * time.Second
+)
+
+func componentSlugCacheKey(slug string) string {
+	return "cache:components:slug:" + slug
+}
+
+// invalidateComponentCaches busts the per-slug cache entry and bumps the
+// list-cache epoch so every cached /components listing (across all
+// page/filter combinations) is treated as stale, without having to
+// enumerate and delete each one individually.
+func invalidateComponentCaches(ctx context.Context, slug string) {
+	cache.Del(ctx, componentSlugCacheKey(slug))
+	cache.Incr(ctx, "cache:components:list:epoch")
+}
 
 //
 // POST /api/components  (protected)
@@ -43,6 +64,7 @@ func CreateComponent(c *fiber.Ctx) error {
 	if _, err := col.InsertOne(ctx, body); err != nil {
 		return utils.Error(c, 500, "failed to insert component")
 	}
+	cache.Incr(ctx, "cache:components:list:epoch")
 
 	return utils.Success(c, fiber.Map{
 		"status":    "created",
@@ -74,6 +96,13 @@ func GetAllComponents(c *fiber.Ctx) error {
 	q := strings.TrimSpace(c.Query("q", ""))
 	framework := strings.TrimSpace(strings.ToLower(c.Query("framework", "")))
 	tagsParam := strings.TrimSpace(c.Query("tags", "")) // "ui,button,react"
+
+	epoch, _ := cache.Get(ctx, "cache:components:list:epoch")
+	listCacheKey := fmt.Sprintf("cache:components:list:v%s:p=%d:l=%d:q=%s:f=%s:t=%s", epoch, page, limit, q, framework, tagsParam)
+	if cached, hit := cache.Get(ctx, listCacheKey); hit {
+		c.Set("Content-Type", "application/json")
+		return c.SendString(fmt.Sprintf(`{"success":true,"data":%s}`, cached))
+	}
 
 	filter := bson.M{}
 	if q != "" {
@@ -137,12 +166,18 @@ func GetAllComponents(c *fiber.Ctx) error {
 		total = int64(len(components)) // fallback
 	}
 
-	return utils.Success(c, fiber.Map{
+	data := fiber.Map{
 		"page":       page,
 		"limit":      limit,
 		"total":      total,
 		"components": components, // [] when empty
-	})
+	}
+
+	if dataBytes, err := json.Marshal(data); err == nil {
+		cache.Set(ctx, listCacheKey, string(dataBytes), componentListCacheTTL)
+	}
+
+	return utils.Success(c, data)
 }
 
 //
@@ -164,18 +199,35 @@ func GetComponent(c *fiber.Ctx) error {
 		visitorID = "anonymous"
 	}
 
-	updateParams := bson.M{
+	// Track the visitor on every request (needed for accurate unique-visitor
+	// counts), but only decode+cache the full document when it actually
+	// changes — repeat visitors within the cache TTL are served from Redis.
+	res, err := col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{
 		"$addToSet": bson.M{"uniqueVisitors": visitorID},
+	})
+	if err != nil || res.MatchedCount == 0 {
+		return utils.Error(c, 404, "component not found")
 	}
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	cacheKey := componentSlugCacheKey(slug)
+	if res.ModifiedCount == 0 {
+		if cached, hit := cache.Get(ctx, cacheKey); hit {
+			c.Set("Content-Type", "application/json")
+			return c.SendString(fmt.Sprintf(`{"success":true,"data":{"component":%s}}`, cached))
+		}
+	}
 
 	var comp models.Component
-	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&comp); err != nil {
+	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
 	// Ensure viewCount accurately reflects unique visitors
 	comp.ViewCount = len(comp.UniqueVisitors)
+
+	if compBytes, err := json.Marshal(comp); err == nil {
+		cache.Set(ctx, cacheKey, string(compBytes), componentSlugCacheTTL)
+	}
 
 	return utils.Success(c, fiber.Map{
 		"component": comp,
@@ -232,6 +284,7 @@ func ToggleLikeComponent(c *fiber.Ctx) error {
 	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&updatedComp); err != nil {
 		return utils.Error(c, 500, "failed to update like status")
 	}
+	invalidateComponentCaches(ctx, slug)
 
 	return utils.Success(c, fiber.Map{
 		"message":   "like toggled",

@@ -72,6 +72,7 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 	if err := col.FindOne(ctx, filter).Decode(&updated); err != nil {
 		return utils.Error(c, 500, "failed to read updated component")
 	}
+	invalidateComponentCaches(ctx, slug)
 
 	// Auto-create first version if no versions exist
 	verCol := db.Client.Database("storehub").Collection("component_versions")

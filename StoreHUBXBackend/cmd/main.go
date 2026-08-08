@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/config"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/middleware"
@@ -28,6 +29,7 @@ func main() {
 	db.Init(config.AppConfig.MongoURI)
 	db.EnsureIndexes(db.Client)
 	defer db.Disconnect()
+	cache.Init()
 
 	app := fiber.New()
 
