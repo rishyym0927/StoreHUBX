@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
+import { Badge } from "@/components/common/badge";
 import type { UserProfileResponse, Component } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
@@ -243,25 +244,15 @@ function ComponentCard({ component }: { component: Component }) {
           {component.frameworks && component.frameworks.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {component.frameworks.map((fw) => (
-                <span
-                  key={fw}
-                  className="text-xs font-mono border border-black dark:border-white px-2 py-1"
-                >
-                  {fw}
-                </span>
+                <Badge key={fw} variant="framework">{fw}</Badge>
               ))}
             </div>
           )}
 
           {component.tags && component.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {component.tags.slice(0, 5).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs font-mono text-black/60 dark:text-white/60"
-                >
-                  #{tag}
-                </span>
+              {component.tags.slice(0, 6).map((tag) => (
+                <Badge key={tag} variant="tag">{tag}</Badge>
               ))}
             </div>
           )}

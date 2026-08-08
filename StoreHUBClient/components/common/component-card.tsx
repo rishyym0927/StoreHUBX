@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Component } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
+import { Badge } from "@/components/common/badge";
 
 interface ComponentCardProps {
   component: Component;
@@ -64,12 +65,7 @@ export function ComponentCard({
         {component.frameworks && component.frameworks.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2 border-t border-black/20 dark:border-white/20">
             {component.frameworks.map((fw) => (
-              <span
-                key={fw}
-                className="px-2.5 py-1 border border-black dark:border-white text-xs font-mono font-bold uppercase tracking-wide hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-              >
-                {fw}
-              </span>
+              <Badge key={fw} variant="framework">{fw}</Badge>
             ))}
           </div>
         )}
@@ -78,12 +74,7 @@ export function ComponentCard({
         {component.tags && component.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {component.tags.slice(0, 6).map((tag) => (
-              <span
-                key={tag}
-                className="text-xs font-mono text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors"
-              >
-                #{tag}
-              </span>
+              <Badge key={tag} variant="tag">{tag}</Badge>
             ))}
             {component.tags.length > 6 && (
               <span className="text-xs font-mono text-black/40 dark:text-white/40">

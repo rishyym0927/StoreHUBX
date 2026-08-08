@@ -10,6 +10,7 @@ import { LikeButton } from "@/components/common/like-button";
 import { ComponentComments } from "@/components/common/component-comments";
 import { ComponentRatings } from "@/components/common/component-ratings";
 import { RatingStars } from "@/components/common/rating-stars";
+import { Badge } from "@/components/common/badge";
 
 import type { Component, ComponentVersion, User } from "@/types";
 
@@ -164,12 +165,7 @@ export default async function ComponentDetail({
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {comp.frameworks.map((fw) => (
-                          <span
-                            key={fw}
-                            className="px-2 py-1 border border-black dark:border-white text-xs font-mono bg-white dark:bg-black"
-                          >
-                            {fw}
-                          </span>
+                          <Badge key={fw} variant="framework">{fw}</Badge>
                         ))}
                       </div>
                     </div>
@@ -183,12 +179,7 @@ export default async function ComponentDetail({
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {comp.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-1 bg-black text-white dark:bg-white dark:text-black text-xs font-mono"
-                          >
-                            #{tag}
-                          </span>
+                          <Badge key={tag} variant="tag">{tag}</Badge>
                         ))}
                       </div>
                     </div>
