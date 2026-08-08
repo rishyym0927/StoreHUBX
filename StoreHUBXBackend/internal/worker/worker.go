@@ -17,6 +17,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// jobTimeout bounds an entire job (download, build, upload) so a stuck
+// network call or hung subprocess can't wedge this single-threaded
+// polling loop forever, blocking every job queued after it.
+const jobTimeout = 10 * time.Minute
+
 type Processor struct {
 	uploader storage.Uploader
 	tmpDir   string
@@ -88,7 +93,9 @@ func (p *Processor) Run(ctx context.Context) {
 			}
 		case <-ticker.C:
 			if job, err := p.claimQueued(ctx); err == nil && job != nil {
-				p.process(ctx, job)
+				jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
+				p.process(jobCtx, job)
+				cancel()
 			}
 		}
 	}

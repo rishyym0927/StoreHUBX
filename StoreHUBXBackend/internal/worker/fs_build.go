@@ -9,10 +9,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rishyym0927/storehubx/internal/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// buildStepTimeout bounds each npm command so a stalled install/build
+// (network hang, stuck postinstall script, etc.) fails the job instead of
+// wedging the worker's single-threaded processing loop forever.
+const buildStepTimeout = 5 * time.Minute
 
 func unzip(srcZip, destDir string) (string, error) {
 	r, err := zip.OpenReader(srcZip)
@@ -66,7 +72,10 @@ func (p *Processor) maybeBuildWithNode(ctx context.Context, jobID primitive.Obje
 			{"npm", "run", "build"},
 		}
 		for _, c := range cmds {
-			cmd := exec.Command(c[0], c[1:]...)
+			stepCtx, cancel := context.WithTimeout(ctx, buildStepTimeout)
+			defer cancel()
+
+			cmd := exec.CommandContext(stepCtx, c[0], c[1:]...)
 			cmd.Dir = workingDir
 
 			// Create pipes for capturing stdout and stderr
@@ -125,6 +134,9 @@ func (p *Processor) maybeBuildWithNode(ctx context.Context, jobID primitive.Obje
 
 			// Wait for the command to finish
 			if err := cmd.Wait(); err != nil {
+				if stepCtx.Err() == context.DeadlineExceeded {
+					return fmt.Errorf("%v timed out after %s", c, buildStepTimeout)
+				}
 				return fmt.Errorf("node build failed on %v: %w", c, err)
 			}
 		}

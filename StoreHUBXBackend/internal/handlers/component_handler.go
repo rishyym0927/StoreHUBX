@@ -32,6 +32,8 @@ func CreateComponent(c *fiber.Ctx) error {
 	body.CreatedAt = now
 	body.UpdatedAt = now
 	body.Slug = strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
+	body.LikedBy = []string{}
+	body.UniqueVisitors = []string{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
