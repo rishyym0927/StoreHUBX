@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +15,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+func generateWebhookSecret() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
 
 type linkPayload struct {
 	Owner  string `json:"owner"`
@@ -44,14 +52,25 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 	uid, _ := c.Locals("user_id").(string)
 
 	filter := bson.M{"slug": slug, "ownerId": uid}
+
+	var existing models.Component
+	webhookSecret := ""
+	if err := col.FindOne(ctx, filter).Decode(&existing); err == nil {
+		webhookSecret = existing.RepoLink.WebhookSecret
+	}
+	if webhookSecret == "" {
+		webhookSecret = generateWebhookSecret()
+	}
+
 	update := bson.M{
 		"$set": bson.M{
 			"repoLink": bson.M{
-				"owner":  body.Owner,
-				"repo":   body.Repo,
-				"path":   body.Path,
-				"ref":    body.Ref,
-				"commit": body.Commit,
+				"owner":         body.Owner,
+				"repo":          body.Repo,
+				"path":          body.Path,
+				"ref":           body.Ref,
+				"commit":        body.Commit,
+				"webhookSecret": webhookSecret,
 			},
 			"updatedAt": time.Now(),
 		},

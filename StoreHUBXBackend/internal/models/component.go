@@ -31,9 +31,10 @@ type Component struct {
 }
 
 type RepoLink struct {
-	Owner  string `bson:"owner" json:"owner"`
-	Repo   string `bson:"repo" json:"repo"`
-	Path   string `bson:"path" json:"path"`     // folder where component lives
-	Ref    string `bson:"ref" json:"ref"`       // branch/tag
-	Commit string `bson:"commit" json:"commit"` // optional pinned sha
+	Owner         string `bson:"owner" json:"owner"`
+	Repo          string `bson:"repo" json:"repo"`
+	Path          string `bson:"path" json:"path"`     // folder where component lives
+	Ref           string `bson:"ref" json:"ref"`       // branch/tag
+	Commit        string `bson:"commit" json:"commit"` // optional pinned sha
+	WebhookSecret string `bson:"webhookSecret,omitempty" json:"-"`
 }

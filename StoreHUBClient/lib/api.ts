@@ -295,6 +295,23 @@ export const ratingApi = {
 };
 
 // ========================================
+// Webhook API
+// ========================================
+
+export const webhookApi = {
+  /**
+   * Get the webhook URL + secret for a component's linked repo (owner-only)
+   */
+  async getConfig(slug: string, authToken: string) {
+    const response = await apiFetch<{ webhookUrl: string; webhookSecret: string }>(
+      `/api/components/${slug}/webhook`,
+      { authToken }
+    );
+    return response;
+  },
+};
+
+// ========================================
 // Version API
 // ========================================
 

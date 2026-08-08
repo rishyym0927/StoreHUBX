@@ -58,6 +58,25 @@ func EnqueueBuild(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "version not found")
 	}
 
+	// 2.5) Build cache: reuse another version's output if it was already
+	// built successfully from the exact same commit.
+	if ver.CommitSHA != "" {
+		if cached, ok := findCachedBuild(ctx, comp.ID, ver.CommitSHA); ok && cached.ID != ver.ID {
+			_, _ = verCol.UpdateOne(ctx,
+				bson.M{"_id": ver.ID},
+				bson.M{"$set": bson.M{
+					"buildState": models.VersionBuildReady,
+					"previewUrl": cached.PreviewURL,
+					"codeUrl":    cached.CodeURL,
+				}},
+			)
+			return utils.Success(c, fiber.Map{
+				"status":  "cached",
+				"message": "reused build output from an identical commit",
+			})
+		}
+	}
+
 	// 3) Create a job
 	job := models.BuildJob{
 		ID:          primitive.NilObjectID,

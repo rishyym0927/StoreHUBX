@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
 import { versionApi, githubApi } from "@/lib/api";
+import { WebhookSetup } from "@/components/common/webhook-setup";
 import type { Component, ComponentVersion, AutoDeployRequest } from "@/types";
 
 interface AutoDeployProps {
@@ -206,6 +207,8 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
           </div>
         </details>
       </div>
+
+      <WebhookSetup slug={component.slug} />
     </div>
   );
 }

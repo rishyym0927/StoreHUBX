@@ -35,6 +35,9 @@ func RegisterRoutes(app *fiber.App) {
 	// Preview (public access)
 	app.Get("/preview/:slug/:version", handlers.RedirectPreview)
 
+	// GitHub push webhook (public - authenticated via HMAC signature, Phase 4.12)
+	app.Post("/webhooks/github/:slug", handlers.HandleGitHubWebhook)
+
 	// ---------- Protected (JWT) ----------
 	// Use the middleware function itself, not a type
 	api := app.Group("/api", middleware.JWTProtected)
@@ -55,6 +58,9 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Auto-deploy new commit (Phase 4.5)
 	api.Post("/components/:slug/deploy", handlers.AutoDeploy)
+
+	// Webhook config (Phase 4.12)
+	api.Get("/components/:slug/webhook", handlers.GetWebhookConfig)
 
 	//phase 4.4
 	api.Post("/components/:slug/versions/:version/build", handlers.EnqueueBuild)

@@ -78,6 +78,26 @@ func AddVersion(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to insert version")
 	}
 
+	// Build cache: reuse another version's output if it was already built
+	// successfully from the exact same commit.
+	if cached, ok := findCachedBuild(ctx, comp.ID, version.CommitSHA); ok {
+		_, _ = verCol.UpdateOne(ctx,
+			bson.M{"_id": version.ID},
+			bson.M{"$set": bson.M{
+				"buildState": models.VersionBuildReady,
+				"previewUrl": cached.PreviewURL,
+				"codeUrl":    cached.CodeURL,
+			}},
+		)
+		version.BuildState = models.VersionBuildReady
+		version.PreviewURL = cached.PreviewURL
+		return utils.Success(c, fiber.Map{
+			"status":  "version added",
+			"version": version,
+			"message": "reused build output from an identical commit",
+		})
+	}
+
 	// Auto-trigger build
 	job := models.BuildJob{
 		ComponentID: comp.ID,
@@ -164,74 +184,106 @@ func AutoDeploy(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Find component
 	compCol := db.Client.Database("storehub").Collection("components")
 	var comp models.Component
 	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	// Verify component is linked
+	uid, _ := c.Locals("user_id").(string)
+
+	newVersion, jobID, err := createVersionAndBuild(ctx, &comp, payload.CommitSHA, payload.Version, payload.Changelog, uid)
+	if err != nil {
+		return utils.Error(c, err.statusCode, err.message)
+	}
+
+	return utils.Success(c, fiber.Map{
+		"version": newVersion,
+		"jobId":   jobID.Hex(),
+		"message": "Version created and build queued automatically",
+	})
+}
+
+type deployError struct {
+	statusCode int
+	message    string
+}
+
+func (e *deployError) Error() string { return e.message }
+
+// createVersionAndBuild creates a ComponentVersion for the given commit and
+// enqueues a BuildJob for it (or, if an identical commit was already built
+// successfully, reuses that build's output instead of rebuilding). Shared by
+// the manual auto-deploy endpoint and the GitHub push webhook.
+func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSHA, versionHint, changelog, actorUID string) (*models.ComponentVersion, primitive.ObjectID, *deployError) {
 	if comp.RepoLink.Owner == "" || comp.RepoLink.Repo == "" {
-		return utils.Error(c, 400, "component is not linked to a repository")
+		return nil, primitive.NilObjectID, &deployError{400, "component is not linked to a repository"}
 	}
 
 	verCol := db.Client.Database("storehub").Collection("component_versions")
 
-	// Check if version exists for this commit
 	var existingVersion models.ComponentVersion
 	err := verCol.FindOne(ctx, bson.M{
 		"componentId": comp.ID,
-		"commitSha":   payload.CommitSHA,
+		"commitSha":   commitSHA,
 	}).Decode(&existingVersion)
-
 	if err == nil {
-		return utils.Error(c, 409, fmt.Sprintf("version already exists for this commit: %s", existingVersion.Version))
+		return nil, primitive.NilObjectID, &deployError{409, fmt.Sprintf("version already exists for this commit: %s", existingVersion.Version)}
 	}
 
-	// Auto-generate version number if not provided
-	versionNumber := payload.Version
+	versionNumber := versionHint
 	if versionNumber == "" {
 		versionNumber = generateNextVersion(ctx, verCol, comp.ID)
 	}
 
-	uid, _ := c.Locals("user_id").(string)
-
-	// Create new version
 	newVersion := models.ComponentVersion{
 		ComponentID: comp.ID,
 		Version:     versionNumber,
-		Changelog:   payload.Changelog,
-		CommitSHA:   payload.CommitSHA,
+		Changelog:   changelog,
+		CommitSHA:   commitSHA,
 		BuildState:  models.VersionBuildQueued,
-		CreatedBy:   uid,
+		CreatedBy:   actorUID,
 		CreatedAt:   time.Now(),
 	}
 
 	if newVersion.Changelog == "" {
-		newVersion.Changelog = fmt.Sprintf("Auto-deployed from commit %s", payload.CommitSHA[:7])
+		newVersion.Changelog = fmt.Sprintf("Auto-deployed from commit %s", commitSHA[:min(7, len(commitSHA))])
+	}
+
+	// Build cache: if this exact commit was already built successfully for
+	// this component (under a different version), reuse its output instead
+	// of enqueuing another build.
+	if cached, ok := findCachedBuild(ctx, comp.ID, commitSHA); ok {
+		newVersion.BuildState = models.VersionBuildReady
+		newVersion.PreviewURL = cached.PreviewURL
+		newVersion.CodeURL = cached.CodeURL
+
+		insertResult, err := verCol.InsertOne(ctx, newVersion)
+		if err != nil {
+			return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
+		}
+		newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
+		return &newVersion, primitive.NilObjectID, nil
 	}
 
 	insertResult, err := verCol.InsertOne(ctx, newVersion)
 	if err != nil {
-		return utils.Error(c, 500, "failed to create version")
+		return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
 	}
-
 	newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
 
-	// Create build job
 	job := models.BuildJob{
 		ComponentID: comp.ID,
-		Component:   slug,
+		Component:   comp.Slug,
 		Version:     versionNumber,
 		Status:      models.BuildQueued,
-		OwnerID:     uid,
+		OwnerID:     actorUID,
 		Repo: models.BuildRepo{
 			Owner:  comp.RepoLink.Owner,
 			Repo:   comp.RepoLink.Repo,
 			Path:   comp.RepoLink.Path,
 			Ref:    comp.RepoLink.Ref,
-			Commit: payload.CommitSHA,
+			Commit: commitSHA,
 		},
 		Logs:      []string{"enqueued - auto-deploy"},
 		CreatedAt: time.Now(),
@@ -241,17 +293,13 @@ func AutoDeploy(c *fiber.Ctx) error {
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")
 	jobRes, err := jobCol.InsertOne(ctx, job)
 	if err != nil {
-		return utils.Error(c, 500, "failed to create build job")
+		return nil, primitive.NilObjectID, &deployError{500, "failed to create build job"}
 	}
 
 	jobID, _ := jobRes.InsertedID.(primitive.ObjectID)
 	notifyWorker(ctx, jobID)
 
-	return utils.Success(c, fiber.Map{
-		"version": newVersion,
-		"jobId":   jobID.Hex(),
-		"message": "Version created and build queued automatically",
-	})
+	return &newVersion, jobID, nil
 }
 
 // Helper function to generate next semantic version
