@@ -37,7 +37,8 @@ Working list of fixes, improvements, and features, ordered for execution. Work t
 
 ## Phase 4 — New features
 
-- [ ] **11. Component ratings/reviews** (beyond likes).
+- [x] **11. Component ratings/reviews** (beyond likes).
+  - Added `Rating` model (unique per componentId+userId) with `internal/handlers/rating_handler.go` (upsert/list/delete), denormalized `averageRating`/`ratingCount` on `Component` recalculated on every write. Frontend: `ratingApi`, `RatingStars`, `ComponentRatings` (review list + rate form) wired into the component detail page and card.
 - [ ] **12. Webhook-based auto-deploy** on GitHub push — upgrade from the current manual "Auto-Deploy" trigger.
 - [ ] **13. Build caching by commit SHA** — skip rebuilding when the same commit is redeployed.
 - [ ] **14. Private/team components** — visibility control beyond fully public.

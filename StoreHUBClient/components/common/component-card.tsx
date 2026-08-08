@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Component } from "@/types";
+import { RatingStars } from "@/components/common/rating-stars";
 
 interface ComponentCardProps {
   component: Component;
@@ -147,6 +148,11 @@ export function ComponentCard({
               </svg>
               <span className="font-bold">{component.repoLink.commit.substring(0, 7)}</span>
             </div>
+          )}
+
+          {/* Rating */}
+          {!!component.ratingCount && (
+            <RatingStars rating={component.averageRating ?? 0} count={component.ratingCount} />
           )}
 
           {/* Updated Date */}

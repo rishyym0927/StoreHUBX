@@ -1,0 +1,143 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/store";
+import { ratingApi } from "@/lib/api";
+import { RatingStars } from "@/components/common/rating-stars";
+import type { Rating } from "@/types";
+import Link from "next/link";
+import Image from "next/image";
+
+interface RatingsProps {
+  slug: string;
+}
+
+export function ComponentRatings({ slug }: RatingsProps) {
+  const { token, user } = useAuth();
+
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [score, setScore] = useState(0);
+  const [review, setReview] = useState("");
+
+  useEffect(() => {
+    fetchRatings();
+  }, [slug]);
+
+  const fetchRatings = async () => {
+    try {
+      const data = await ratingApi.list(slug);
+      setRatings(data.ratings || []);
+      setAverageRating(data.averageRating || 0);
+      setRatingCount(data.ratingCount || 0);
+      const mine = data.ratings?.find((r) => r.userId === user?.providerId);
+      if (mine) {
+        setScore(mine.score);
+        setReview(mine.review);
+      }
+    } catch (error) {
+      console.error("Failed to load ratings:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !user || score < 1) return;
+
+    setIsSubmitting(true);
+    try {
+      const saved = await ratingApi.upsert(slug, { score, review }, token);
+      setRatings((prev) => [saved, ...prev.filter((r) => r.userId !== saved.userId)]);
+      await fetchRatings();
+    } catch (error) {
+      console.error("Failed to submit rating:", error);
+      alert("Failed to submit rating");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-12 border-t-4 border-black dark:border-white pt-8">
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <h2 className="text-2xl font-black uppercase tracking-tight">
+          Reviews ({ratingCount})
+        </h2>
+        {ratingCount > 0 && <RatingStars rating={averageRating} count={ratingCount} size="md" />}
+      </div>
+
+      {/* Rate box */}
+      {user ? (
+        <form onSubmit={handleSubmit} className="mb-10 space-y-3">
+          <RatingStars rating={score} size="lg" interactive onRate={setScore} />
+          <textarea
+            value={review}
+            onChange={(e) => setReview(e.target.value)}
+            placeholder="Share your thoughts (optional)"
+            className="w-full min-h-[80px] p-4 font-mono text-sm border-2 border-black dark:border-white bg-transparent focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-y"
+            disabled={isSubmitting}
+          />
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting || score < 1}
+              className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black font-mono font-bold uppercase text-sm border-2 border-black dark:border-white hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+            >
+              {isSubmitting ? "Saving..." : "Submit Rating"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="mb-10 p-6 border-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-center font-mono text-sm">
+          You must be logged in to leave a rating.
+        </div>
+      )}
+
+      {/* Ratings List */}
+      {isLoading ? (
+        <div className="font-mono text-sm animate-pulse">Loading reviews...</div>
+      ) : ratings.length === 0 ? (
+        <div className="font-mono text-sm text-black/60 dark:text-white/60">No reviews yet. Be the first!</div>
+      ) : (
+        <div className="space-y-4">
+          {ratings.map((rating) => (
+            <div key={rating.id} className="p-4 border-2 border-black dark:border-white bg-white dark:bg-black">
+              <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
+                <Link
+                  href={`/users/${rating.userId}`}
+                  className="flex items-center gap-2 hover:underline group"
+                >
+                  {rating.authorAvatar ? (
+                    <Image
+                      src={rating.authorAvatar}
+                      alt={rating.authorUsername || "User"}
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 rounded-full border border-black dark:border-white group-hover:scale-110 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-bold text-xs uppercase">
+                      {(rating.authorUsername || rating.authorName || rating.userId).charAt(0)}
+                    </div>
+                  )}
+                  <span className="font-bold font-mono text-sm">
+                    {rating.authorName || rating.authorUsername || rating.userId}
+                  </span>
+                </Link>
+                <RatingStars rating={rating.score} />
+              </div>
+              {rating.review && (
+                <p className="font-mono text-sm whitespace-pre-wrap">{rating.review}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

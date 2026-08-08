@@ -11,6 +11,9 @@ import type {
   VersionCreateRequest,
   VersionCreateResponse,
   Comment,
+  RatingsListResponse,
+  RatingUpsertRequest,
+  RatingUpsertResponse,
   AutoDeployRequest,
   BuildEnqueueResponse,
   BuildStatusResponse,
@@ -237,6 +240,51 @@ export const commentApi = {
   async delete(slug: string, commentId: string, authToken: string) {
     const response = await apiFetch<{ message: string }>(
       `/api/components/${slug}/comments/${commentId}`,
+      {
+        method: "DELETE",
+        authToken,
+      }
+    );
+    return response;
+  },
+};
+
+// ========================================
+// Rating API
+// ========================================
+
+export const ratingApi = {
+  /**
+   * List all ratings for a component
+   */
+  async list(slug: string) {
+    const response = await apiFetch<RatingsListResponse>(
+      `/components/${slug}/ratings`
+    );
+    return response;
+  },
+
+  /**
+   * Upsert the caller's rating on a component (requires auth)
+   */
+  async upsert(slug: string, data: RatingUpsertRequest, authToken: string) {
+    const response = await apiFetch<RatingUpsertResponse>(
+      `/api/components/${slug}/ratings`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        authToken,
+      }
+    );
+    return response.rating;
+  },
+
+  /**
+   * Delete the caller's own rating (requires auth)
+   */
+  async delete(slug: string, authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      `/api/components/${slug}/ratings`,
       {
         method: "DELETE",
         authToken,

@@ -47,6 +47,12 @@ func EnsureIndexes(client *mongo.Client) error {
 		Options: nil,
 	})
 
+	// ratings: one rating per user per component
+	_, _ = db.Collection("ratings").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "userId", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
 	// build_jobs: filter by component/version/status
 	_, _ = db.Collection("build_jobs").Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{Keys: bson.D{{Key: "component", Value: 1}}},

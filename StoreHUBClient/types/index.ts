@@ -36,6 +36,10 @@ export interface Component {
   likeCount?: number;
   uniqueVisitors?: string[];
   viewCount?: number;
+  averageRating?: number;
+  ratingCount?: number;
+  visibility?: "public" | "private";
+  collaborators?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +53,19 @@ export interface Comment {
   authorAvatar?: string;
   content: string;
   createdAt: string;
+}
+
+export interface Rating {
+  id: string;
+  componentId: string;
+  userId: string;
+  authorUsername?: string;
+  authorName?: string;
+  authorAvatar?: string;
+  score: number;
+  review: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type BuildState = "none" | "queued" | "running" | "ready" | "error";
@@ -218,6 +235,22 @@ export interface BuildEnqueueResponse {
 
 export interface BuildStatusResponse {
   build: BuildJob;
+}
+
+export interface RatingsListResponse {
+  ratings: Rating[];
+  averageRating: number;
+  ratingCount: number;
+}
+
+export interface RatingUpsertRequest {
+  score: number;
+  review?: string;
+}
+
+export interface RatingUpsertResponse {
+  message: string;
+  rating: Rating;
 }
 
 export interface UserProfileResponse {

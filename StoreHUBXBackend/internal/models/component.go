@@ -22,7 +22,10 @@ type Component struct {
 	LikeCount      int                `bson:"likeCount" json:"likeCount"`           // Current count of likes
 	UniqueVisitors []string           `bson:"uniqueVisitors" json:"uniqueVisitors"` // Array of UserIDs or IP Hashes
 	ViewCount      int                `bson:"viewCount" json:"viewCount"`           // Current count of unique visitors
-	
+
+	AverageRating float64 `bson:"averageRating" json:"averageRating"`
+	RatingCount   int     `bson:"ratingCount" json:"ratingCount"`
+
 	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
 }

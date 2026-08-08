@@ -8,6 +8,8 @@ import { OwnerActions } from "@/components/common/owner-actions";
 import { InstallCommand } from "@/components/common/install-command";
 import { LikeButton } from "@/components/common/like-button";
 import { ComponentComments } from "@/components/common/component-comments";
+import { ComponentRatings } from "@/components/common/component-ratings";
+import { RatingStars } from "@/components/common/rating-stars";
 
 import type { Component, ComponentVersion, User } from "@/types";
 
@@ -75,6 +77,10 @@ export default async function ComponentDetail({
                 <p className="text-sm font-mono text-black/60 dark:text-white/60 leading-relaxed">
                   {comp.description}
                 </p>
+              )}
+
+              {!!comp.ratingCount && (
+                <RatingStars rating={comp.averageRating ?? 0} count={comp.ratingCount} size="md" />
               )}
             </div>
 
@@ -230,6 +236,9 @@ export default async function ComponentDetail({
 
             {/* Tabs Section */}
             <ComponentDetailTabs component={comp} versions={versions} />
+
+            {/* Reviews Section */}
+            <ComponentRatings slug={comp.slug} />
 
             {/* Discussions Section */}
             <ComponentComments slug={comp.slug} />
