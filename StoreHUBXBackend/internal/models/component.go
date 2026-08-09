@@ -41,3 +41,8 @@ type RepoLink struct {
 	Commit        string `bson:"commit" json:"commit"` // optional pinned sha
 	WebhookSecret string `bson:"webhookSecret,omitempty" json:"-"`
 }
+
+// AsBuildRepo converts to the shape BuildJob.Repo expects, dropping the webhook secret.
+func (r RepoLink) AsBuildRepo() BuildRepo {
+	return BuildRepo{Owner: r.Owner, Repo: r.Repo, Path: r.Path, Ref: r.Ref, Commit: r.Commit}
+}

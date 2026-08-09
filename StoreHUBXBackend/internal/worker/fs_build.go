@@ -213,38 +213,16 @@ func detectContentType(pathOrName string) string {
 	}
 }
 
-// modifyIndexHTMLOnDisk edits index.html IN PLACE on disk before S3 upload
-// This ensures the S3 uploader reads our modified version
+// modifyIndexHTMLOnDisk injects StoreHUBX metadata (component name/version/id,
+// build timestamp) into index.html's <head>, in place on disk, before the S3
+// uploader reads it.
 func modifyIndexHTMLOnDisk(ctx context.Context, jobID primitive.ObjectID, indexPath string, job *models.BuildJob, logFunc func(context.Context, primitive.ObjectID, string)) error {
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Starting index.html modification: %s", indexPath))
-
-	// Check if file exists
-	if _, err := os.Stat(indexPath); err != nil {
-		logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] index.html not found at %s: %v", indexPath, err))
-		return fmt.Errorf("index.html not found: %w", err)
-	}
-
-	// Read current content
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
-		logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Failed to read index.html: %v", err))
-		return fmt.Errorf("failed to read index.html: %w", err)
+		return fmt.Errorf("index.html not found: %w", err)
 	}
-
-	originalSize := len(content)
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Read index.html, size: %d bytes", originalSize))
-
 	modified := string(content)
 
-	// Count absolute paths BEFORE modification
-	absolutePathsBefore := strings.Count(modified, `"/assets/`) + strings.Count(modified, `'/assets/`)
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Absolute asset paths found BEFORE edit: %d", absolutePathsBefore))
-
-	// Log current DOCTYPE status
-	hasDoctype := strings.Contains(modified, "<!DOCTYPE") || strings.Contains(modified, "<!doctype")
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Has DOCTYPE before edit: %t", hasDoctype))
-
-	// Add custom meta tags in <head>
 	metaTags := fmt.Sprintf(`
     <!-- StoreHUBX Component Metadata -->
     <meta name="component-name" content="%s">
@@ -256,8 +234,6 @@ func modifyIndexHTMLOnDisk(ctx context.Context, jobID primitive.ObjectID, indexP
 		job.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		job.ComponentID.Hex(),
 	)
-
-	// Add environment config script
 	configScript := fmt.Sprintf(`
     <script>
         window.__STOREHUBX_COMPONENT__ = {
@@ -273,43 +249,14 @@ func modifyIndexHTMLOnDisk(ctx context.Context, jobID primitive.ObjectID, indexP
 		job.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	)
 
-	// Insert before </head>
-	headCloseIndex := strings.Index(modified, "</head>")
-	if headCloseIndex != -1 {
-		modified = modified[:headCloseIndex] + metaTags + "\n" + configScript + "\n" + modified[headCloseIndex:]
-		logFunc(ctx, jobID, "[DEBUG] Successfully inserted meta tags and config script before </head>")
-	} else {
-		logFunc(ctx, jobID, "[DEBUG] Warning: </head> tag not found, skipping meta tag insertion")
+	if i := strings.Index(modified, "</head>"); i != -1 {
+		modified = modified[:i] + metaTags + "\n" + configScript + "\n" + modified[i:]
 	}
 
-	modifiedSize := len(modified)
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Modified content size: %d bytes (diff: %+d)", modifiedSize, modifiedSize-originalSize))
-
-	// Count absolute paths AFTER our modification (should be same as before)
-	absolutePathsAfter := strings.Count(modified, `"/assets/`) + strings.Count(modified, `'/assets/`)
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Absolute asset paths found AFTER edit: %d (should be unchanged)", absolutePathsAfter))
-
-	// Write back to disk BEFORE S3 upload reads it
 	if err := os.WriteFile(indexPath, []byte(modified), 0644); err != nil {
-		logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Failed to write modified index.html: %v", err))
 		return fmt.Errorf("failed to write modified index.html: %w", err)
 	}
 
-	// Verify the write
-	verifyContent, err := os.ReadFile(indexPath)
-	if err != nil {
-		logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] Failed to verify written file: %v", err))
-		return fmt.Errorf("failed to verify written file: %w", err)
-	}
-
-	verifySize := len(verifyContent)
-	if verifySize != modifiedSize {
-		logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] ERROR: Written file size mismatch! Expected %d, got %d", modifiedSize, verifySize))
-		return fmt.Errorf("file write verification failed: size mismatch")
-	}
-
-	logFunc(ctx, jobID, fmt.Sprintf("[DEBUG] ✓ Successfully wrote and verified modified index.html (%d bytes)", verifySize))
-	logFunc(ctx, jobID, "[DEBUG] Note: S3 uploader will now read this modified version and rewrite absolute paths to relative")
-
+	logFunc(ctx, jobID, "injected component metadata into index.html")
 	return nil
 }

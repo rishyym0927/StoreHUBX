@@ -11,10 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// findCachedBuild looks for the most recent successful BuildJob for this
-// component from the same commit SHA. If found, its bundle URL can be
-// reused instead of re-running the full build pipeline for another version
-// that happens to point at an identical commit.
+// findCachedBuild returns the most recent successful BuildJob for this
+// component + commit SHA, if any, so its bundle URL can be reused instead of
+// rebuilding.
 func findCachedBuild(ctx context.Context, componentID primitive.ObjectID, commitSHA string) (*models.BuildJob, bool) {
 	if commitSHA == "" {
 		return nil, false
@@ -35,10 +34,8 @@ func findCachedBuild(ctx context.Context, componentID primitive.ObjectID, commit
 }
 
 // reuseCachedBuild records a synthetic, already-succeeded BuildJob for
-// newVersionID that points at an existing successful build's artifacts,
-// instead of re-running the pipeline for a commit this component has
-// already built. This keeps "latest BuildJob for a version" the single
-// source of truth for build/preview status even on the cache-hit path.
+// newVersionID pointing at cached's artifacts, so "latest BuildJob for a
+// version" stays the single source of truth even on a cache hit.
 func reuseCachedBuild(ctx context.Context, cached *models.BuildJob, componentID, newVersionID primitive.ObjectID, componentSlug, versionStr, ownerID string) {
 	now := time.Now()
 	job := models.BuildJob{

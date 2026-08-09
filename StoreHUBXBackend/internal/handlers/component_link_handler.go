@@ -46,8 +46,6 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 		return utils.Error(c, 400, "owner and repo are required")
 	}
 
-	fmt.Printf("DEBUG: Received payload: %+v\n", body)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -96,9 +94,8 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 		}
 	}
 
-	// Item 46: merge any GitHub-topic tags the user picked in the link UI
-	// into the component's existing tags (union, deduped) rather than
-	// overwriting manually-entered ones.
+	// Merge GitHub-topic tags picked in the link UI into the component's
+	// existing tags (union, deduped) rather than overwriting manual entries.
 	if len(body.Tags) > 0 {
 		seen := make(map[string]bool, len(existing.Tags)+len(body.Tags))
 		merged := make([]string, 0, len(existing.Tags)+len(body.Tags))
@@ -117,38 +114,30 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 		setFields["tags"] = merged
 	}
 
-	update := bson.M{"$set": setFields}
-
-	// Use UpdateOne to inspect counts
-	res, err := col.UpdateOne(ctx, filter, update)
+	res, err := col.UpdateOne(ctx, filter, bson.M{"$set": setFields})
 	if err != nil {
 		return utils.Error(c, 500, "database update error")
 	}
-	// If nothing matched, tell the caller plainly
 	if res.MatchedCount == 0 {
 		return utils.Error(c, 404, "component not found or unauthorized")
 	}
 
-	// Read back the updated document to confirm what's in DB
 	var updated models.Component
 	if err := col.FindOne(ctx, filter).Decode(&updated); err != nil {
 		return utils.Error(c, 500, "failed to read updated component")
 	}
 	invalidateComponentCaches(ctx, slug)
 
-	// Auto-create first version if no versions exist
+	// Auto-create the first version (and queue its build) if none exist yet.
 	verCol := db.Client.Database("storehub").Collection("component_versions")
-
 	count, err := verCol.CountDocuments(ctx, bson.M{"componentId": updated.ID})
 	if err != nil {
 		return utils.Error(c, 500, "failed to check versions")
 	}
 
 	var firstVersion *models.ComponentVersion
-
 	if count == 0 && body.Commit != "" {
-		// Create initial version (1.0.0)
-		firstVersion = &models.ComponentVersion{
+		v := models.ComponentVersion{
 			ComponentID: updated.ID,
 			Version:     "1.0.0",
 			Changelog:   fmt.Sprintf("Initial version linked to %s/%s at commit %s", body.Owner, body.Repo, body.Commit[:7]),
@@ -156,39 +145,14 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 			CreatedBy:   uid,
 			CreatedAt:   time.Now(),
 		}
-
-		insertResult, err := verCol.InsertOne(ctx, firstVersion)
-		if err != nil {
-			fmt.Printf("WARNING: Failed to create initial version: %v\n", err)
+		if insertResult, err := verCol.InsertOne(ctx, v); err == nil {
+			v.ID = insertResult.InsertedID.(primitive.ObjectID)
+			firstVersion = &v
+			if _, err := enqueueBuildJob(ctx, &updated, v.ID, v.Version, uid, "enqueued - initial version", updated.RepoLink.AsBuildRepo()); err != nil {
+				fmt.Printf("WARNING: failed to enqueue initial build job: %v\n", err)
+			}
 		} else {
-			firstVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
-
-			// Enqueue build job for the initial version
-			job := models.BuildJob{
-				ComponentID: updated.ID,
-				VersionID:   firstVersion.ID,
-				Component:   slug,
-				Version:     "1.0.0",
-				Status:      models.BuildQueued,
-				OwnerID:     uid,
-				Repo: models.BuildRepo{
-					Owner:  body.Owner,
-					Repo:   body.Repo,
-					Path:   body.Path,
-					Ref:    body.Ref,
-					Commit: body.Commit,
-				},
-				Logs:      []string{"enqueued - initial version"},
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			}
-
-			jobCol := db.Client.Database("storehub").Collection("build_jobs")
-			jobRes, err := jobCol.InsertOne(ctx, job)
-			if err == nil {
-				jobID, _ := jobRes.InsertedID.(primitive.ObjectID)
-				fmt.Printf("Created initial build job: %s\n", jobID.Hex())
-			}
+			fmt.Printf("WARNING: failed to create initial version: %v\n", err)
 		}
 	}
 

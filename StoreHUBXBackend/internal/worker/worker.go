@@ -234,7 +234,6 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 	_ = os.RemoveAll(workRoot)
 	_ = os.MkdirAll(workRoot, 0o755)
 
-	// 1) Download zipball
 	p.logPush(ctx, jobID, "downloading repository zip...")
 	zipPath, err := downloadRepoZip(ctx, workRoot, job.Repo.Owner, job.Repo.Repo, firstNonEmpty(job.Repo.Commit, job.Repo.Ref, "main"), job.OwnerID)
 	if err != nil {
@@ -242,7 +241,6 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		return
 	}
 
-	// 2) Unzip
 	p.logPush(ctx, jobID, "extracting zip...")
 	topDir, err := unzip(zipPath, workRoot)
 	if err != nil {
@@ -250,7 +248,6 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		return
 	}
 
-	// 3) Resolve working dir (linked folder)
 	working := topDir
 	if job.Repo.Path != "" {
 		working = filepath.Join(topDir, job.Repo.Path)
@@ -260,28 +257,24 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		return
 	}
 
-	// 4) Try to build
 	p.logPush(ctx, jobID, "running build (npm) or static fallback...")
 	if err := p.maybeBuildWithNode(ctx, jobID, working); err != nil {
 		p.fail(ctx, job, err)
 		return
 	}
 
-	// 5) Pick output folder
 	outDir, err := pickOutputDir(working)
 	if err != nil {
 		p.fail(ctx, job, err)
 		return
 	}
 
-	// 6) Modify index.html BEFORE upload
 	p.logPush(ctx, jobID, "[STEP] Modifying index.html...")
 	indexPath := filepath.Join(outDir, "index.html")
 	if err := modifyIndexHTMLOnDisk(ctx, jobID, indexPath, job, p.logPush); err != nil {
 		p.logPush(ctx, jobID, fmt.Sprintf("[WARN] index.html modification skipped: %v", err.Error()))
 	}
 
-	// 7) Upload files using PublishComponentFromDist (handles path rewriting)
 	p.logPush(ctx, jobID, "[STEP] Uploading files to S3 and rewriting asset paths...")
 	bundleURL, err := p.uploader.PublishComponentFromDist(ctx, job.Component, job.Version, outDir)
 	if err != nil {
@@ -290,7 +283,6 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 	}
 	p.logPush(ctx, jobID, fmt.Sprintf("[SUCCESS] Files uploaded. Bundle URL: %s", bundleURL))
 
-	// 6) Update job success
 	p.setStatus(ctx, jobID, models.BuildSuccess, bson.M{
 		"endedAt":   time.Now(),
 		"artifacts": models.BuildArtifact{BundleURL: bundleURL},

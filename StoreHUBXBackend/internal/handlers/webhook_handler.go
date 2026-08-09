@@ -17,8 +17,8 @@ import (
 )
 
 type githubPushPayload struct {
-	Ref   string `json:"ref"`
-	After string `json:"after"`
+	Ref        string `json:"ref"`
+	After      string `json:"after"`
 	Repository struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
@@ -52,9 +52,8 @@ func HandleGitHubWebhook(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 

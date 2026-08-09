@@ -38,6 +38,14 @@ func invalidateComponentCaches(ctx context.Context, slug string) {
 	cache.Incr(ctx, "cache:components:list:epoch")
 }
 
+// findComponentBySlug fetches a component by its slug.
+func findComponentBySlug(ctx context.Context, slug string) (models.Component, error) {
+	var comp models.Component
+	err := db.Client.Database("storehub").Collection("components").
+		FindOne(ctx, bson.M{"slug": slug}).Decode(&comp)
+	return comp, err
+}
+
 // POST /api/components  (protected)
 func CreateComponent(c *fiber.Ctx) error {
 	var body models.Component
@@ -237,8 +245,8 @@ func GetComponent(c *fiber.Ctx) error {
 		}
 	}
 
-	var comp models.Component
-	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
@@ -285,22 +293,19 @@ func ToggleLikeComponent(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
-
-	var comp models.Component
-	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
+	col := db.Client.Database("storehub").Collection("components")
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
 
-	// Try to insert a like first — the partial unique index on
-	// {componentId, userId, type} rejects a second like from the same user
-	// with a duplicate-key error, which we treat as "already liked" and
-	// convert into an unlike. This removes the read-then-write race the
-	// previous LikedBy-array/FindOne-then-scan approach had.
+	// Insert a like first — the partial unique index on {componentId,
+	// userId, type} rejects a second insert with a duplicate-key error,
+	// which we treat as "already liked" and convert into an unlike.
 	liked := true
-	_, err := interactionCol.InsertOne(ctx, models.Interaction{
+	_, err = interactionCol.InsertOne(ctx, models.Interaction{
 		ComponentID: comp.ID,
 		UserID:      uid,
 		Type:        models.InteractionLike,

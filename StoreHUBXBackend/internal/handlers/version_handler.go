@@ -17,6 +17,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// existingVersionForCommit returns the version already created for this exact commit, if any.
+func existingVersionForCommit(ctx context.Context, verCol *mongo.Collection, componentID primitive.ObjectID, commitSHA string) (models.ComponentVersion, bool) {
+	var v models.ComponentVersion
+	err := verCol.FindOne(ctx, bson.M{"componentId": componentID, "commitSha": commitSHA}).Decode(&v)
+	return v, err == nil
+}
+
 // POST /api/components/:slug/versions  (protected)
 func AddVersion(c *fiber.Ctx) error {
 	componentSlug := c.Params("slug")
@@ -32,38 +39,24 @@ func AddVersion(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": componentSlug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, componentSlug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
-
-	// Check if component is linked to a repo
 	if comp.RepoLink.Owner == "" || comp.RepoLink.Repo == "" {
 		return utils.Error(c, 400, "component must be linked to a GitHub repository before adding versions")
 	}
 
-	// If no commit SHA provided, use the one from component's repoLink
 	if strings.TrimSpace(version.CommitSHA) == "" {
 		version.CommitSHA = comp.RepoLink.Commit
 	}
-
 	if version.CommitSHA == "" {
 		return utils.Error(c, 400, "commit SHA is required")
 	}
 
 	verCol := db.Client.Database("storehub").Collection("component_versions")
-
-	// Check if version already exists for this commit
-	var existingVersion models.ComponentVersion
-	err := verCol.FindOne(ctx, bson.M{
-		"componentId": comp.ID,
-		"commitSha":   version.CommitSHA,
-	}).Decode(&existingVersion)
-
-	if err == nil {
-		// Version with this commit already exists
-		return utils.Error(c, 409, fmt.Sprintf("version already exists for commit %s (version: %s)", version.CommitSHA[:7], existingVersion.Version))
+	if existing, ok := existingVersionForCommit(ctx, verCol, comp.ID, version.CommitSHA); ok {
+		return utils.Error(c, 409, fmt.Sprintf("version already exists for commit %s (version: %s)", version.CommitSHA[:7], existing.Version))
 	}
 
 	uid, _ := c.Locals("user_id").(string)
@@ -78,7 +71,6 @@ func AddVersion(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to insert version")
 	}
 	version.ID = res.InsertedID.(primitive.ObjectID)
-
 	notify.NewVersion(ctx, comp.ID, comp.Name, version.Version)
 
 	// Build cache: reuse another version's output if it was already built
@@ -92,30 +84,10 @@ func AddVersion(c *fiber.Ctx) error {
 		})
 	}
 
-	// Auto-trigger build
-	job := models.BuildJob{
-		ComponentID: comp.ID,
-		VersionID:   version.ID,
-		Component:   componentSlug,
-		Version:     version.Version,
-		Status:      models.BuildQueued,
-		OwnerID:     uid,
-		Repo: models.BuildRepo{
-			Owner:  comp.RepoLink.Owner,
-			Repo:   comp.RepoLink.Repo,
-			Path:   comp.RepoLink.Path,
-			Ref:    comp.RepoLink.Ref,
-			Commit: version.CommitSHA,
-		},
-		Logs:      []string{"enqueued"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
-	jobRes, _ := jobCol.InsertOne(ctx, job)
-	if oid, ok := jobRes.InsertedID.(primitive.ObjectID); ok {
-		notifyWorker(ctx, oid)
+	repo := comp.RepoLink.AsBuildRepo()
+	repo.Commit = version.CommitSHA
+	if _, err := enqueueBuildJob(ctx, &comp, version.ID, version.Version, uid, "enqueued", repo); err != nil {
+		return utils.Error(c, 500, "failed to enqueue build")
 	}
 
 	return utils.Success(c, fiber.Map{
@@ -132,9 +104,8 @@ func GetComponentVersions(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
@@ -145,33 +116,26 @@ func GetComponentVersions(c *fiber.Ctx) error {
 	}
 	defer cursor.Close(ctx)
 
-	// Pre-init to ensure JSON array, not null
-	versions := make([]models.ComponentVersion, 0)
+	versions := make([]models.ComponentVersion, 0) // [] not null when empty
 	if err := cursor.All(ctx, &versions); err != nil {
 		return utils.Error(c, 500, "failed to decode versions")
 	}
 
-	return utils.Success(c, fiber.Map{
-		"versions": versions, // [] when empty
-	})
+	return utils.Success(c, fiber.Map{"versions": versions})
 }
 
-// POST /api/components/:slug/deploy  (protected)
-// Auto-deploy a new commit from linked repository
+// POST /api/components/:slug/deploy  (protected) - creates a version + build from a pushed commit
 func AutoDeploy(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 
-	type deployPayload struct {
+	var payload struct {
 		CommitSHA string `json:"commitSha"`
-		Version   string `json:"version"`   // Optional: suggest version number
-		Changelog string `json:"changelog"` // Optional: changelog message
+		Version   string `json:"version"`
+		Changelog string `json:"changelog"`
 	}
-
-	var payload deployPayload
 	if err := c.BodyParser(&payload); err != nil {
 		return utils.Error(c, 400, "invalid JSON body")
 	}
-
 	if payload.CommitSHA == "" {
 		return utils.Error(c, 400, "commit SHA is required")
 	}
@@ -179,17 +143,15 @@ func AutoDeploy(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
 	uid, _ := c.Locals("user_id").(string)
-
-	newVersion, jobID, err := createVersionAndBuild(ctx, &comp, payload.CommitSHA, payload.Version, payload.Changelog, uid)
-	if err != nil {
-		return utils.Error(c, err.statusCode, err.message)
+	newVersion, jobID, deployErr := createVersionAndBuild(ctx, &comp, payload.CommitSHA, payload.Version, payload.Changelog, uid)
+	if deployErr != nil {
+		return utils.Error(c, deployErr.statusCode, deployErr.message)
 	}
 
 	return utils.Success(c, fiber.Map{
@@ -207,23 +169,16 @@ type deployError struct {
 func (e *deployError) Error() string { return e.message }
 
 // createVersionAndBuild creates a ComponentVersion for the given commit and
-// enqueues a BuildJob for it (or, if an identical commit was already built
-// successfully, reuses that build's output instead of rebuilding). Shared by
-// the manual auto-deploy endpoint and the GitHub push webhook.
+// enqueues a BuildJob for it (or reuses a matching successful build's output
+// instead of rebuilding). Shared by AutoDeploy and the GitHub push webhook.
 func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSHA, versionHint, changelog, actorUID string) (*models.ComponentVersion, primitive.ObjectID, *deployError) {
 	if comp.RepoLink.Owner == "" || comp.RepoLink.Repo == "" {
 		return nil, primitive.NilObjectID, &deployError{400, "component is not linked to a repository"}
 	}
 
 	verCol := db.Client.Database("storehub").Collection("component_versions")
-
-	var existingVersion models.ComponentVersion
-	err := verCol.FindOne(ctx, bson.M{
-		"componentId": comp.ID,
-		"commitSha":   commitSHA,
-	}).Decode(&existingVersion)
-	if err == nil {
-		return nil, primitive.NilObjectID, &deployError{409, fmt.Sprintf("version already exists for this commit: %s", existingVersion.Version)}
+	if existing, ok := existingVersionForCommit(ctx, verCol, comp.ID, commitSHA); ok {
+		return nil, primitive.NilObjectID, &deployError{409, fmt.Sprintf("version already exists for this commit: %s", existing.Version)}
 	}
 
 	versionNumber := versionHint
@@ -239,23 +194,8 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 		CreatedBy:   actorUID,
 		CreatedAt:   time.Now(),
 	}
-
 	if newVersion.Changelog == "" {
 		newVersion.Changelog = fmt.Sprintf("Auto-deployed from commit %s", commitSHA[:min(7, len(commitSHA))])
-	}
-
-	// Build cache: if this exact commit was already built successfully for
-	// this component (under a different version), reuse its output instead
-	// of enqueuing another build.
-	if cached, ok := findCachedBuild(ctx, comp.ID, commitSHA); ok {
-		insertResult, err := verCol.InsertOne(ctx, newVersion)
-		if err != nil {
-			return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
-		}
-		newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
-		reuseCachedBuild(ctx, cached, comp.ID, newVersion.ID, comp.Slug, versionNumber, actorUID)
-		notify.NewVersion(ctx, comp.ID, comp.Name, versionNumber)
-		return &newVersion, primitive.NilObjectID, nil
 	}
 
 	insertResult, err := verCol.InsertOne(ctx, newVersion)
@@ -265,40 +205,24 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 	newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
 	notify.NewVersion(ctx, comp.ID, comp.Name, versionNumber)
 
-	job := models.BuildJob{
-		ComponentID: comp.ID,
-		VersionID:   newVersion.ID,
-		Component:   comp.Slug,
-		Version:     versionNumber,
-		Status:      models.BuildQueued,
-		OwnerID:     actorUID,
-		Repo: models.BuildRepo{
-			Owner:  comp.RepoLink.Owner,
-			Repo:   comp.RepoLink.Repo,
-			Path:   comp.RepoLink.Path,
-			Ref:    comp.RepoLink.Ref,
-			Commit: commitSHA,
-		},
-		Logs:      []string{"enqueued - auto-deploy"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	repo := comp.RepoLink.AsBuildRepo()
+	repo.Commit = commitSHA
+
+	if cached, ok := findCachedBuild(ctx, comp.ID, commitSHA); ok {
+		reuseCachedBuild(ctx, cached, comp.ID, newVersion.ID, comp.Slug, versionNumber, actorUID)
+		return &newVersion, primitive.NilObjectID, nil
 	}
 
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
-	jobRes, err := jobCol.InsertOne(ctx, job)
+	jobID, err := enqueueBuildJob(ctx, comp, newVersion.ID, versionNumber, actorUID, "enqueued - auto-deploy", repo)
 	if err != nil {
 		return nil, primitive.NilObjectID, &deployError{500, "failed to create build job"}
 	}
 
-	jobID, _ := jobRes.InsertedID.(primitive.ObjectID)
-	notifyWorker(ctx, jobID)
-
 	return &newVersion, jobID, nil
 }
 
-// Helper function to generate next semantic version
+// generateNextVersion picks the next patch version after the component's latest one.
 func generateNextVersion(ctx context.Context, verCol *mongo.Collection, componentID primitive.ObjectID) string {
-	// Get latest version sorted by creation date
 	opts := options.Find().SetSort(bson.M{"createdAt": -1}).SetLimit(1)
 	cursor, err := verCol.Find(ctx, bson.M{"componentId": componentID}, opts)
 	if err != nil {
@@ -311,16 +235,9 @@ func generateNextVersion(ctx context.Context, verCol *mongo.Collection, componen
 		return "1.0.0"
 	}
 
-	// Parse latest version and increment patch
-	latestVersion := versions[0].Version
-	// Simple increment: if it's "1.2.3", make it "1.2.4"
-
 	var major, minor, patch int
-	_, err = fmt.Sscanf(latestVersion, "%d.%d.%d", &major, &minor, &patch)
-	if err != nil {
-		// If parsing fails, start with 1.0.0
+	if _, err := fmt.Sscanf(versions[0].Version, "%d.%d.%d", &major, &minor, &patch); err != nil {
 		return "1.0.0"
 	}
-
 	return fmt.Sprintf("%d.%d.%d", major, minor, patch+1)
 }

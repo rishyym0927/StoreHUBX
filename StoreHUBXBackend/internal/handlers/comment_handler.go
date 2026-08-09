@@ -48,14 +48,11 @@ func GetComments(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. Get the component ID by slug
-	col := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	// 2. Fetch its comments
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
 	cursor, err := interactionCol.Find(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionComment}, opts)
@@ -87,7 +84,6 @@ func AddComment(c *fiber.Ctx) error {
 		return utils.Error(c, 401, "unauthorized")
 	}
 
-	// Parse content payload
 	var payload struct {
 		Content string `json:"content"`
 	}
@@ -98,21 +94,17 @@ func AddComment(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 1. Get the component
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	// 1.5 Get the User for author details
 	userCol := db.Client.Database("storehub").Collection("users")
 	var author models.User
 	if err := userCol.FindOne(ctx, bson.M{"providerId": uid}).Decode(&author); err != nil {
 		return utils.Error(c, 404, "user not found")
 	}
 
-	// 2. Create the comment
 	newComment := models.Interaction{
 		ComponentID:    comp.ID,
 		UserID:         uid,

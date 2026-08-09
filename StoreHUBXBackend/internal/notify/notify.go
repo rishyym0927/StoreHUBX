@@ -1,7 +1,5 @@
-// Package notify creates Notification documents. It's a leaf package (only
-// depends on db/models) so both internal/handlers and internal/worker can
-// call it without an import cycle — handlers already imports worker for the
-// build-stream constant, so worker can't import handlers back.
+// Package notify creates Notification documents. It only depends on
+// db/models so both handlers and worker can call it without an import cycle.
 package notify
 
 import (

@@ -100,9 +100,8 @@ func UpsertRating(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
@@ -159,9 +158,8 @@ func ListRatings(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
@@ -201,9 +199,8 @@ func DeleteRating(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
-	var comp models.Component
-	if err := compCol.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 

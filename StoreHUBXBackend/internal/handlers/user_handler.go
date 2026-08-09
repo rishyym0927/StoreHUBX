@@ -12,83 +12,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// GetProfile returns complete user details with all their components
-func GetProfile(c *fiber.Ctx) error {
-	// Get user ID (provider ID) from JWT token via middleware
-	providerId, ok := c.Locals("user_id").(string)
-	if !ok || providerId == "" {
-		return utils.Error(c, 401, "unauthorized: invalid user ID")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Fetch user from MongoDB using provider ID
+// buildProfileResponse fetches a user and their visible components. A
+// private component only shows up for the owner or a listed collaborator.
+func buildProfileResponse(ctx context.Context, ownerID, viewerID string) (fiber.Map, error) {
 	userCol := db.Client.Database("storehub").Collection("users")
 	var user models.User
-	if err := userCol.FindOne(ctx, bson.M{"providerId": providerId}).Decode(&user); err != nil {
-		return utils.Error(c, 404, "user not found")
+	if err := userCol.FindOne(ctx, bson.M{"providerId": ownerID}).Decode(&user); err != nil {
+		return nil, err
 	}
 
-	// Fetch all components belonging to this user
-	componentCol := db.Client.Database("storehub").Collection("components")
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := componentCol.Find(ctx, bson.M{"ownerId": providerId}, opts)
-	if err != nil {
-		return utils.Error(c, 500, "failed to fetch components")
-	}
-	defer cursor.Close(ctx)
-
-	var components []models.Component
-	if err := cursor.All(ctx, &components); err != nil {
-		return utils.Error(c, 500, "failed to decode components")
-	}
-
-	// Return complete user profile with components
-	return utils.Success(c, fiber.Map{
-		"user": fiber.Map{
-			"id":         user.ID,
-			"name":       user.Name,
-			"email":      user.Email,
-			"username":   user.Username,
-			"avatarUrl":  user.AvatarURL,
-			"provider":   user.Provider,
-			"providerId": user.ProviderID,
-			"createdAt":  user.CreatedAt,
-			"updatedAt":  user.UpdatedAt,
-		},
-		"components": components,
-		"stats": fiber.Map{
-			"totalComponents": len(components),
-		},
-		"status": "authenticated",
-	})
-}
-
-// GetProfileById returns complete user details with all their components by provider ID
-func GetProfileById(c *fiber.Ctx) error {
-	// Get provider ID from URL parameter
-	providerId := c.Params("id")
-	if providerId == "" {
-		return utils.Error(c, 400, "provider ID is required")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Fetch user from MongoDB using provider ID
-	userCol := db.Client.Database("storehub").Collection("users")
-	var user models.User
-	if err := userCol.FindOne(ctx, bson.M{"providerId": providerId}).Decode(&user); err != nil {
-		return utils.Error(c, 404, "user not found")
-	}
-
-	// Fetch this user's components. A private component only shows up for
-	// the owner themselves or a listed collaborator - everyone else sees
-	// only their public ones.
-	viewerID, _ := c.Locals("user_id").(string)
-	filter := bson.M{"ownerId": providerId}
-	if viewerID != providerId {
+	filter := bson.M{"ownerId": ownerID}
+	if viewerID != ownerID {
 		filter["$or"] = []bson.M{
 			{"visibility": bson.M{"$ne": "private"}},
 			{"collaborators": viewerID},
@@ -99,17 +33,16 @@ func GetProfileById(c *fiber.Ctx) error {
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	cursor, err := componentCol.Find(ctx, filter, opts)
 	if err != nil {
-		return utils.Error(c, 500, "failed to fetch components")
+		return nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var components []models.Component
+	components := make([]models.Component, 0)
 	if err := cursor.All(ctx, &components); err != nil {
-		return utils.Error(c, 500, "failed to decode components")
+		return nil, err
 	}
 
-	// Return complete user profile with components
-	return utils.Success(c, fiber.Map{
+	return fiber.Map{
 		"user": fiber.Map{
 			"id":         user.ID,
 			"name":       user.Name,
@@ -122,8 +55,42 @@ func GetProfileById(c *fiber.Ctx) error {
 			"updatedAt":  user.UpdatedAt,
 		},
 		"components": components,
-		"stats": fiber.Map{
-			"totalComponents": len(components),
-		},
-	})
+		"stats":      fiber.Map{"totalComponents": len(components)},
+	}, nil
+}
+
+// GetProfile returns the authenticated caller's own profile + components.
+func GetProfile(c *fiber.Ctx) error {
+	providerId, ok := c.Locals("user_id").(string)
+	if !ok || providerId == "" {
+		return utils.Error(c, 401, "unauthorized: invalid user ID")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := buildProfileResponse(ctx, providerId, providerId)
+	if err != nil {
+		return utils.Error(c, 404, "user not found")
+	}
+	resp["status"] = "authenticated"
+	return utils.Success(c, resp)
+}
+
+// GetProfileById returns a user's public profile + components by provider ID.
+func GetProfileById(c *fiber.Ctx) error {
+	providerId := c.Params("id")
+	if providerId == "" {
+		return utils.Error(c, 400, "provider ID is required")
+	}
+	viewerID, _ := c.Locals("user_id").(string)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := buildProfileResponse(ctx, providerId, viewerID)
+	if err != nil {
+		return utils.Error(c, 404, "user not found")
+	}
+	return utils.Success(c, resp)
 }
