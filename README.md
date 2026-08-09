@@ -88,3 +88,17 @@ npm install
 npm run dev
 ```
 > The frontend will be available at `http://localhost:3000`.
+
+1) Landing Page
+<img width="1466" height="841" alt="Rishyx_Shot 2026-08-09 at 9 11 03 AM" src="https://github.com/user-attachments/assets/08903587-0b6c-48a7-b27a-64ff5da3875a" />
+<img width="1465" height="842" alt="image" src="https://github.com/user-attachments/assets/afd5b4f9-da17-4394-a110-ffd1fdc288e5" />
+<img width="1467" height="841" alt="image" src="https://github.com/user-attachments/assets/b8001fad-f0af-41a4-8ff5-a72f80c5a12d" />
+
+2) Profile Page
+<img width="1468" height="841" alt="image" src="https://github.com/user-attachments/assets/175227b4-26a8-4d9e-b0d6-41395a27e03b" />
+
+3) Componennt Page
+<img width="1457" height="836" alt="Rishyx_Shot 2026-08-09 at 9 12 50 AM" src="https://github.com/user-attachments/assets/4d2fcf3c-35c0-4c1d-8379-82d9cde6a6d9" />
+
+
+
