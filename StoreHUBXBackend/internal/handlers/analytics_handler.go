@@ -45,27 +45,26 @@ func GetOwnerAnalytics(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to decode components")
 	}
 
-	commentCol := db.Client.Database("storehub").Collection("comments")
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
 
 	results := make([]componentAnalytics, 0, len(components))
 	totalViews, totalLikes, totalComments := 0, 0, int64(0)
 
 	for _, comp := range components {
-		commentCount, _ := commentCol.CountDocuments(ctx, bson.M{"componentId": comp.ID})
+		commentCount, _ := interactionCol.CountDocuments(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionComment})
 
-		views := len(comp.UniqueVisitors)
 		results = append(results, componentAnalytics{
 			ID:            comp.ID.Hex(),
 			Slug:          comp.Slug,
 			Name:          comp.Name,
-			ViewCount:     views,
+			ViewCount:     comp.ViewCount,
 			LikeCount:     comp.LikeCount,
 			AverageRating: comp.AverageRating,
 			RatingCount:   comp.RatingCount,
 			CommentCount:  commentCount,
 		})
 
-		totalViews += views
+		totalViews += comp.ViewCount
 		totalLikes += comp.LikeCount
 		totalComments += commentCount
 	}

@@ -9,10 +9,10 @@ import { useToast } from "@/components/common/toast";
 interface LikeButtonProps {
   slug: string;
   initialLikeCount: number;
-  initialLikedBy: string[];
+  initialLikedByMe: boolean;
 }
 
-export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButtonProps) {
+export function LikeButton({ slug, initialLikeCount, initialLikedByMe }: LikeButtonProps) {
   const { token, user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
@@ -24,10 +24,10 @@ export function LikeButton({ slug, initialLikeCount, initialLikedBy }: LikeButto
 
   // Sync state once user auth hydrates from local storage
   useEffect(() => {
-    if (user && initialLikedBy) {
-      setIsLiked(initialLikedBy.includes(user.providerId));
+    if (user) {
+      setIsLiked(initialLikedByMe);
     }
-  }, [user, initialLikedBy]);
+  }, [user, initialLikedByMe]);
 
   const handleLike = async () => {
     if (!token || !user) {

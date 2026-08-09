@@ -153,7 +153,6 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 			Version:     "1.0.0",
 			Changelog:   fmt.Sprintf("Initial version linked to %s/%s at commit %s", body.Owner, body.Repo, body.Commit[:7]),
 			CommitSHA:   body.Commit,
-			BuildState:  models.VersionBuildQueued,
 			CreatedBy:   uid,
 			CreatedAt:   time.Now(),
 		}
@@ -167,6 +166,7 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 			// Enqueue build job for the initial version
 			job := models.BuildJob{
 				ComponentID: updated.ID,
+				VersionID:   firstVersion.ID,
 				Component:   slug,
 				Version:     "1.0.0",
 				Status:      models.BuildQueued,

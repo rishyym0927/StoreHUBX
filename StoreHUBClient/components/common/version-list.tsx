@@ -13,7 +13,6 @@ export type VersionDoc = {
   readme?: string;
   usage?: string;
   codeUrl?: string;
-  previewUrl?: string | null;
   commitSha?: string;
   createdAt: string;
 };
@@ -161,9 +160,7 @@ export function VersionsList({
                   if (active === "readme") return <Markdown content={v.readme} />;
                   if (active === "usage") return <Markdown content={v.usage} />;
                   if (active === "preview") {
-                    // Use the actual previewUrl from the version data if available
-                    const previewUrl = v.previewUrl || previewApi.getPreviewUrl(slug, v.version);
-                    return <PreviewIframe url={previewUrl} />;
+                    return <PreviewIframe url={previewApi.getPreviewUrl(slug, v.version)} />;
                   }
                   if (active === "code") {
                     return (

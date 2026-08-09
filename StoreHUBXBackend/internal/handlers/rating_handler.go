@@ -13,13 +13,44 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// ratingView is the stable JSON shape for a rating-type Interaction — the
+// external contract is unchanged even though ratings now live in the shared
+// interactions collection (Interaction.Content holds the review text).
+type ratingView struct {
+	ID             primitive.ObjectID `json:"id"`
+	ComponentID    primitive.ObjectID `json:"componentId"`
+	UserID         string             `json:"userId"`
+	AuthorUsername string             `json:"authorUsername,omitempty"`
+	AuthorName     string             `json:"authorName,omitempty"`
+	AuthorAvatar   string             `json:"authorAvatar,omitempty"`
+	Score          int                `json:"score"`
+	Review         string             `json:"review"`
+	CreatedAt      time.Time          `json:"createdAt"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+}
+
+func toRatingView(i models.Interaction) ratingView {
+	return ratingView{
+		ID:             i.ID,
+		ComponentID:    i.ComponentID,
+		UserID:         i.UserID,
+		AuthorUsername: i.AuthorUsername,
+		AuthorName:     i.AuthorName,
+		AuthorAvatar:   i.AuthorAvatar,
+		Score:          i.Score,
+		Review:         i.Content,
+		CreatedAt:      i.CreatedAt,
+		UpdatedAt:      i.UpdatedAt,
+	}
+}
+
 // recalculateRatingStats aggregates all ratings for a component and writes
 // the denormalized averageRating/ratingCount back onto the component doc.
 func recalculateRatingStats(ctx context.Context, componentID primitive.ObjectID) error {
-	ratingCol := db.Client.Database("storehub").Collection("ratings")
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"componentId": componentID}},
+		{"$match": bson.M{"componentId": componentID, "type": models.InteractionRating}},
 		{"$group": bson.M{
 			"_id":   nil,
 			"avg":   bson.M{"$avg": "$score"},
@@ -27,7 +58,7 @@ func recalculateRatingStats(ctx context.Context, componentID primitive.ObjectID)
 		}},
 	}
 
-	cursor, err := ratingCol.Aggregate(ctx, pipeline)
+	cursor, err := interactionCol.Aggregate(ctx, pipeline)
 	if err != nil {
 		return err
 	}
@@ -81,12 +112,13 @@ func UpsertRating(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "user not found")
 	}
 
-	ratingCol := db.Client.Database("storehub").Collection("ratings")
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
 	now := time.Now()
+	filter := bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionRating}
 	update := bson.M{
 		"$set": bson.M{
 			"score":          payload.Score,
-			"review":         payload.Review,
+			"content":        payload.Review,
 			"authorUsername": author.Username,
 			"authorName":     author.Name,
 			"authorAvatar":   author.AvatarURL,
@@ -95,11 +127,12 @@ func UpsertRating(c *fiber.Ctx) error {
 		"$setOnInsert": bson.M{
 			"componentId": comp.ID,
 			"userId":      uid,
+			"type":        models.InteractionRating,
 			"createdAt":   now,
 		},
 	}
 	opts := options.Update().SetUpsert(true)
-	if _, err := ratingCol.UpdateOne(ctx, bson.M{"componentId": comp.ID, "userId": uid}, update, opts); err != nil {
+	if _, err := interactionCol.UpdateOne(ctx, filter, update, opts); err != nil {
 		return utils.Error(c, 500, "failed to save rating")
 	}
 
@@ -108,14 +141,14 @@ func UpsertRating(c *fiber.Ctx) error {
 	}
 	invalidateComponentCaches(ctx, slug)
 
-	var saved models.Rating
-	if err := ratingCol.FindOne(ctx, bson.M{"componentId": comp.ID, "userId": uid}).Decode(&saved); err != nil {
+	var saved models.Interaction
+	if err := interactionCol.FindOne(ctx, filter).Decode(&saved); err != nil {
 		return utils.Error(c, 500, "failed to load saved rating")
 	}
 
 	return utils.Success(c, fiber.Map{
 		"message": "rating saved",
-		"rating":  saved,
+		"rating":  toRatingView(saved),
 	})
 }
 
@@ -132,17 +165,22 @@ func ListRatings(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	ratingCol := db.Client.Database("storehub").Collection("ratings")
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := ratingCol.Find(ctx, bson.M{"componentId": comp.ID}, opts)
+	cursor, err := interactionCol.Find(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionRating}, opts)
 	if err != nil {
 		return utils.Error(c, 500, "database error")
 	}
 	defer cursor.Close(ctx)
 
-	ratings := make([]models.Rating, 0)
-	if err := cursor.All(ctx, &ratings); err != nil {
+	interactions := make([]models.Interaction, 0)
+	if err := cursor.All(ctx, &interactions); err != nil {
 		return utils.Error(c, 500, "failed to decode ratings")
+	}
+
+	ratings := make([]ratingView, 0, len(interactions))
+	for _, i := range interactions {
+		ratings = append(ratings, toRatingView(i))
 	}
 
 	return utils.Success(c, fiber.Map{
@@ -169,8 +207,8 @@ func DeleteRating(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	ratingCol := db.Client.Database("storehub").Collection("ratings")
-	res, err := ratingCol.DeleteOne(ctx, bson.M{"componentId": comp.ID, "userId": uid})
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	res, err := interactionCol.DeleteOne(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionRating})
 	if err != nil {
 		return utils.Error(c, 500, "failed to delete rating")
 	}

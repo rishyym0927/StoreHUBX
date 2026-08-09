@@ -88,6 +88,22 @@ func RegisterRoutes(app *fiber.App) {
 	// viewer's own private/collaborator components on that profile)
 	app.Get("/users/:id", middleware.OptionalAuth, handlers.GetProfileById)
 
+	// Collections (Phase 5)
+	api.Post("/collections", handlers.CreateCollection)
+	api.Post("/collections/:id/components/:componentId", handlers.AddComponentToCollection)
+	api.Delete("/collections/:id/components/:componentId", handlers.RemoveComponentFromCollection)
+	// OptionalAuth so an owner can see their own private collections
+	app.Get("/users/:id/collections", middleware.OptionalAuth, handlers.ListUserCollections)
+
+	// Follows (Phase 5) — feeds the notification hooks in AddVersion/AutoDeploy/webhook
+	api.Post("/follows", handlers.CreateFollow)
+	api.Delete("/follows", handlers.DeleteFollow)
+
+	// Notifications (Phase 5)
+	api.Get("/notifications", handlers.ListNotifications)
+	api.Post("/notifications/:id/read", handlers.MarkNotificationRead)
+	api.Post("/notifications/read-all", handlers.MarkAllNotificationsRead)
+
 	// GitHub browsing (Phase 4.2)
 	gh := api.Group("/github")
 	gh.Get("/repos", githubapi.ListUserRepos)

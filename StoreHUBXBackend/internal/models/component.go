@@ -15,13 +15,13 @@ type Component struct {
 	Tags        []string           `bson:"tags" json:"tags"`
 	License     string             `bson:"license" json:"license"`
 	OwnerID     string             `bson:"ownerId" json:"ownerId"`
-	RepoLink       RepoLink           `bson:"repoLink" json:"repoLink"`
-	
-	// Social & Analytics (MVP Arrays)
-	LikedBy        []string           `bson:"likedBy" json:"likedBy"`               // Array of UserIDs
-	LikeCount      int                `bson:"likeCount" json:"likeCount"`           // Current count of likes
-	UniqueVisitors []string           `bson:"uniqueVisitors" json:"uniqueVisitors"` // Array of UserIDs or IP Hashes
-	ViewCount      int                `bson:"viewCount" json:"viewCount"`           // Current count of unique visitors
+	RepoLink    RepoLink           `bson:"repoLink" json:"repoLink"`
+
+	// Social & Analytics — durable counters, kept in sync via $inc rather
+	// than recomputed from an embedded array at read time.
+	LikeCount int  `bson:"likeCount" json:"likeCount"`
+	LikedByMe bool `bson:"-" json:"likedByMe,omitempty"` // response-only, populated per-viewer by GetComponent
+	ViewCount int  `bson:"viewCount" json:"viewCount"`
 
 	AverageRating float64 `bson:"averageRating" json:"averageRating"`
 	RatingCount   int     `bson:"ratingCount" json:"ratingCount"`
@@ -29,8 +29,8 @@ type Component struct {
 	Visibility    string   `bson:"visibility" json:"visibility"` // "public" | "private"
 	Collaborators []string `bson:"collaborators" json:"collaborators"`
 
-	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
+	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
+	UpdatedAt time.Time `bson:"updatedAt" json:"updatedAt"`
 }
 
 type RepoLink struct {

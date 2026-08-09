@@ -18,6 +18,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const viewDedupWindow = 24 * time.Hour
+
 const (
 	componentListCacheTTL = 30 * time.Second
 	componentSlugCacheTTL = 15 * time.Second
@@ -36,9 +38,7 @@ func invalidateComponentCaches(ctx context.Context, slug string) {
 	cache.Incr(ctx, "cache:components:list:epoch")
 }
 
-//
 // POST /api/components  (protected)
-//
 func CreateComponent(c *fiber.Ctx) error {
 	var body models.Component
 	if err := c.BodyParser(&body); err != nil {
@@ -53,8 +53,6 @@ func CreateComponent(c *fiber.Ctx) error {
 	now := time.Now()
 	body.CreatedAt = now
 	body.UpdatedAt = now
-	body.LikedBy = []string{}
-	body.UniqueVisitors = []string{}
 	if body.Visibility != "private" {
 		body.Visibility = "public"
 	}
@@ -91,9 +89,7 @@ func CreateComponent(c *fiber.Ctx) error {
 	})
 }
 
-//
 // GET /components  (public)  with q, framework, tags, page, limit
-//
 func GetAllComponents(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -200,9 +196,7 @@ func GetAllComponents(c *fiber.Ctx) error {
 	return utils.Success(c, data)
 }
 
-//
 // GET /components/:slug  (public)
-//
 func GetComponent(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 
@@ -211,27 +205,29 @@ func GetComponent(c *fiber.Ctx) error {
 
 	col := db.Client.Database("storehub").Collection("components")
 
+	uid, _ := c.Locals("user_id").(string)
+
 	visitorID := c.IP()
-	if uid, ok := c.Locals("user_id").(string); ok && uid != "" {
+	if uid != "" {
 		visitorID = uid
 	}
 	if visitorID == "" {
 		visitorID = "anonymous"
 	}
 
-	// Track the visitor on every request (needed for accurate unique-visitor
-	// counts). Private components need an authorization check against the
-	// full document on every request, so the Redis fast-path (serving a
-	// cached copy without decoding) is only used for public components.
-	res, err := col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{
-		"$addToSet": bson.M{"uniqueVisitors": visitorID},
-	})
-	if err != nil || res.MatchedCount == 0 {
-		return utils.Error(c, 404, "component not found")
+	// Count this view at most once per visitor per dedup window via a Redis
+	// SetNX; if Redis is unreachable this degrades to counting every
+	// request, matching this package's existing no-Redis degrade pattern.
+	if cache.SetNX(ctx, "viewed:"+slug+":"+visitorID, "1", viewDedupWindow) {
+		_, _ = col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{"$inc": bson.M{"viewCount": 1}})
 	}
 
+	// likedByMe is per-viewer, so the cached blob (shared across all
+	// anonymous viewers) can only be served when there's no authenticated
+	// viewer to compute it for. Private components need a live
+	// authorization check regardless, so they never use the cache either.
 	cacheKey := componentSlugCacheKey(slug)
-	if res.ModifiedCount == 0 {
+	if uid == "" {
 		if cached, hit := cache.Get(ctx, cacheKey); hit {
 			var cachedComp models.Component
 			if err := json.Unmarshal([]byte(cached), &cachedComp); err == nil && cachedComp.Visibility != "private" {
@@ -247,16 +243,18 @@ func GetComponent(c *fiber.Ctx) error {
 	}
 
 	if comp.Visibility == "private" {
-		uid, _ := c.Locals("user_id").(string)
 		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
 			return utils.Error(c, 404, "component not found")
 		}
 	}
 
-	// Ensure viewCount accurately reflects unique visitors
-	comp.ViewCount = len(comp.UniqueVisitors)
+	if uid != "" {
+		interactionCol := db.Client.Database("storehub").Collection("interactions")
+		count, _ := interactionCol.CountDocuments(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionLike})
+		comp.LikedByMe = count > 0
+	}
 
-	if comp.Visibility != "private" {
+	if comp.Visibility != "private" && uid == "" {
 		if compBytes, err := json.Marshal(comp); err == nil {
 			cache.Set(ctx, cacheKey, string(compBytes), componentSlugCacheTTL)
 		}
@@ -276,9 +274,7 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-//
 // POST /components/:slug/like (Protected)
-//
 func ToggleLikeComponent(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 	uid, ok := c.Locals("user_id").(string)
@@ -291,41 +287,45 @@ func ToggleLikeComponent(c *fiber.Ctx) error {
 
 	col := db.Client.Database("storehub").Collection("components")
 
-	// Check if already liked by this user
 	var comp models.Component
-	err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp)
-	if err != nil {
+	if err := col.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	isLiked := false
-	for _, id := range comp.LikedBy {
-		if id == uid {
-			isLiked = true
-			break
+	interactionCol := db.Client.Database("storehub").Collection("interactions")
+
+	// Try to insert a like first — the partial unique index on
+	// {componentId, userId, type} rejects a second like from the same user
+	// with a duplicate-key error, which we treat as "already liked" and
+	// convert into an unlike. This removes the read-then-write race the
+	// previous LikedBy-array/FindOne-then-scan approach had.
+	liked := true
+	_, err := interactionCol.InsertOne(ctx, models.Interaction{
+		ComponentID: comp.ID,
+		UserID:      uid,
+		Type:        models.InteractionLike,
+		CreatedAt:   time.Now(),
+	})
+	if mongo.IsDuplicateKeyError(err) {
+		liked = false
+		if _, err := interactionCol.DeleteOne(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionLike}); err != nil {
+			return utils.Error(c, 500, "failed to update like status")
 		}
+	} else if err != nil {
+		return utils.Error(c, 500, "failed to update like status")
 	}
 
-	var updateParams bson.M
-	if isLiked {
-		// Unlike
-		updateParams = bson.M{
-			"$pull": bson.M{"likedBy": uid},
-			"$inc":  bson.M{"likeCount": -1},
-		}
-	} else {
-		// Like
-		updateParams = bson.M{
-			"$addToSet": bson.M{"likedBy": uid},
-			"$inc":      bson.M{"likeCount": 1},
-		}
+	inc := 1
+	if !liked {
+		inc = -1
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 	var updatedComp models.Component
-	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, updateParams, opts).Decode(&updatedComp); err != nil {
+	if err := col.FindOneAndUpdate(ctx, bson.M{"slug": slug}, bson.M{"$inc": bson.M{"likeCount": inc}}, opts).Decode(&updatedComp); err != nil {
 		return utils.Error(c, 500, "failed to update like status")
 	}
+	updatedComp.LikedByMe = liked
 	invalidateComponentCaches(ctx, slug)
 
 	return utils.Success(c, fiber.Map{
@@ -333,5 +333,3 @@ func ToggleLikeComponent(c *fiber.Ctx) error {
 		"component": updatedComp,
 	})
 }
-
-

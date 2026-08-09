@@ -51,27 +51,22 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
     const version = String(form.get("version") || "").trim();
     const changelog = String(form.get("changelog") || "").trim();
     const codeUrl = String(form.get("codeUrl") || "").trim();
-    const previewUrl = String(form.get("previewUrl") || "").trim();
     const readme = String(form.get("readme") || "").trim();
 
     // Client-side validation
     const errors: Record<string, string> = {};
-    
+
     if (!version) {
       errors.version = "Version is required";
     } else if (!isValidVersion(version)) {
       errors.version = "Version should follow semantic versioning (e.g., 1.0.0)";
     }
-    
+
     // Validate URLs if provided
     if (codeUrl && !isValidUrl(codeUrl)) {
       errors.codeUrl = "Please enter a valid URL";
     }
-    
-    if (previewUrl && !isValidUrl(previewUrl)) {
-      errors.previewUrl = "Please enter a valid URL";
-    }
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -81,7 +76,6 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
       version,
       changelog: changelog || undefined,
       codeUrl: codeUrl || undefined,
-      previewUrl: previewUrl || undefined,
       readme: readme || undefined,
       // Include commit SHA from component's repoLink if available
       commitSha: component?.repoLink?.commit || undefined,
@@ -159,18 +153,6 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.codeUrl}</p>
               )}
               <p className="text-xs opacity-60 mt-1">Optional: Link to source code</p>
-            </div>
-
-            <div>
-              <input
-                name="previewUrl"
-                placeholder="CodeSandbox / StackBlitz Embed URL"
-                className={`w-full border rounded-xl p-3 bg-transparent ${formErrors.previewUrl ? 'border-red-500' : ''}`}
-              />
-              {formErrors.previewUrl && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.previewUrl}</p>
-              )}
-              <p className="text-xs opacity-60 mt-1">Optional: Live preview URL (CodeSandbox, StackBlitz, etc.)</p>
             </div>
 
             <div>

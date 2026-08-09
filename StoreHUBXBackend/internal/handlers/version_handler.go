@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/models"
+	"github.com/rishyym0927/storehubx/internal/notify"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -70,27 +71,20 @@ func AddVersion(c *fiber.Ctx) error {
 	version.CreatedBy = uid
 	version.CreatedAt = time.Now()
 	version.CodeURL = strings.TrimSpace(version.CodeURL)
-	version.PreviewURL = strings.TrimSpace(version.PreviewURL)
 	version.Readme = strings.TrimSpace(version.Readme)
-	version.BuildState = models.VersionBuildQueued
 
-	if _, err := verCol.InsertOne(ctx, version); err != nil {
+	res, err := verCol.InsertOne(ctx, version)
+	if err != nil {
 		return utils.Error(c, 500, "failed to insert version")
 	}
+	version.ID = res.InsertedID.(primitive.ObjectID)
+
+	notify.NewVersion(ctx, comp.ID, comp.Name, version.Version)
 
 	// Build cache: reuse another version's output if it was already built
 	// successfully from the exact same commit.
 	if cached, ok := findCachedBuild(ctx, comp.ID, version.CommitSHA); ok {
-		_, _ = verCol.UpdateOne(ctx,
-			bson.M{"_id": version.ID},
-			bson.M{"$set": bson.M{
-				"buildState": models.VersionBuildReady,
-				"previewUrl": cached.PreviewURL,
-				"codeUrl":    cached.CodeURL,
-			}},
-		)
-		version.BuildState = models.VersionBuildReady
-		version.PreviewURL = cached.PreviewURL
+		reuseCachedBuild(ctx, cached, comp.ID, version.ID, componentSlug, version.Version, uid)
 		return utils.Success(c, fiber.Map{
 			"status":  "version added",
 			"version": version,
@@ -101,6 +95,7 @@ func AddVersion(c *fiber.Ctx) error {
 	// Auto-trigger build
 	job := models.BuildJob{
 		ComponentID: comp.ID,
+		VersionID:   version.ID,
 		Component:   componentSlug,
 		Version:     version.Version,
 		Status:      models.BuildQueued,
@@ -241,7 +236,6 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 		Version:     versionNumber,
 		Changelog:   changelog,
 		CommitSHA:   commitSHA,
-		BuildState:  models.VersionBuildQueued,
 		CreatedBy:   actorUID,
 		CreatedAt:   time.Now(),
 	}
@@ -254,15 +248,13 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 	// this component (under a different version), reuse its output instead
 	// of enqueuing another build.
 	if cached, ok := findCachedBuild(ctx, comp.ID, commitSHA); ok {
-		newVersion.BuildState = models.VersionBuildReady
-		newVersion.PreviewURL = cached.PreviewURL
-		newVersion.CodeURL = cached.CodeURL
-
 		insertResult, err := verCol.InsertOne(ctx, newVersion)
 		if err != nil {
 			return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
 		}
 		newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
+		reuseCachedBuild(ctx, cached, comp.ID, newVersion.ID, comp.Slug, versionNumber, actorUID)
+		notify.NewVersion(ctx, comp.ID, comp.Name, versionNumber)
 		return &newVersion, primitive.NilObjectID, nil
 	}
 
@@ -271,9 +263,11 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 		return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
 	}
 	newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
+	notify.NewVersion(ctx, comp.ID, comp.Name, versionNumber)
 
 	job := models.BuildJob{
 		ComponentID: comp.ID,
+		VersionID:   newVersion.ID,
 		Component:   comp.Slug,
 		Version:     versionNumber,
 		Status:      models.BuildQueued,

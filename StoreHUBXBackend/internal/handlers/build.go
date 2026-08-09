@@ -13,6 +13,7 @@ import (
 	"github.com/rishyym0927/storehubx/internal/worker"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // notifyWorker pushes the job id onto the Redis Stream a worker's
@@ -58,18 +59,22 @@ func EnqueueBuild(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "version not found")
 	}
 
+	uid, _ := c.Locals("user_id").(string)
+
 	// 2.5) Build cache: reuse another version's output if it was already
 	// built successfully from the exact same commit.
 	if ver.CommitSHA != "" {
-		if cached, ok := findCachedBuild(ctx, comp.ID, ver.CommitSHA); ok && cached.ID != ver.ID {
-			_, _ = verCol.UpdateOne(ctx,
-				bson.M{"_id": ver.ID},
-				bson.M{"$set": bson.M{
-					"buildState": models.VersionBuildReady,
-					"previewUrl": cached.PreviewURL,
-					"codeUrl":    cached.CodeURL,
-				}},
-			)
+		if cached, ok := findCachedBuild(ctx, comp.ID, ver.CommitSHA); ok {
+			if cached.VersionID == ver.ID {
+				// This exact version already has a successful build for this
+				// commit — return it as-is instead of inserting a duplicate.
+				return utils.Success(c, fiber.Map{
+					"status":  "cached",
+					"jobId":   cached.ID.Hex(),
+					"message": "this version was already built successfully from this commit",
+				})
+			}
+			reuseCachedBuild(ctx, cached, comp.ID, ver.ID, slug, versionStr, uid)
 			return utils.Success(c, fiber.Map{
 				"status":  "cached",
 				"message": "reused build output from an identical commit",
@@ -81,10 +86,11 @@ func EnqueueBuild(c *fiber.Ctx) error {
 	job := models.BuildJob{
 		ID:          primitive.NilObjectID,
 		ComponentID: comp.ID,
+		VersionID:   ver.ID,
 		Component:   slug,
 		Version:     versionStr,
 		Status:      models.BuildQueued,
-		OwnerID:     c.Locals("user_id").(string),
+		OwnerID:     uid,
 		Repo: models.BuildRepo{
 			Owner:  comp.RepoLink.Owner,
 			Repo:   comp.RepoLink.Repo,
@@ -106,14 +112,8 @@ func EnqueueBuild(c *fiber.Ctx) error {
 	oid, _ := res.InsertedID.(primitive.ObjectID)
 	notifyWorker(ctx, oid)
 
-	// 4) Optionally update version build state => queued
-	_, _ = verCol.UpdateOne(ctx,
-		bson.M{"_id": ver.ID},
-		bson.M{"$set": bson.M{"buildState": models.VersionBuildQueued}},
-	)
-
 	return utils.Success(c, fiber.Map{
-		"jobId": oid.Hex(),
+		"jobId":  oid.Hex(),
 		"status": "queued",
 	})
 }
@@ -150,7 +150,8 @@ func ListBuildsForVersion(c *fiber.Ctx) error {
 	defer cancel()
 
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")
-	cur, err := jobCol.Find(ctx, bson.M{"component": slug, "version": versionStr}, nil)
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest (latest attempt) first
+	cur, err := jobCol.Find(ctx, bson.M{"component": slug, "version": versionStr}, opts)
 	if err != nil {
 		return utils.Error(c, 500, "db error")
 	}

@@ -32,9 +32,8 @@ export interface Component {
   license: string;
   ownerId: string;
   repoLink?: RepoLink | null;
-  likedBy?: string[];
+  likedByMe?: boolean;
   likeCount?: number;
-  uniqueVisitors?: string[];
   viewCount?: number;
   averageRating?: number;
   ratingCount?: number;
@@ -68,8 +67,9 @@ export interface Rating {
   updatedAt: string;
 }
 
-export type BuildState = "none" | "queued" | "running" | "ready" | "error";
-
+// A version's build status/preview URL is derived from the latest BuildJob
+// for its id (see buildApi / useBuilds) — ComponentVersion no longer tracks
+// either directly.
 export interface ComponentVersion {
   id: string;
   componentId: string;
@@ -77,8 +77,6 @@ export interface ComponentVersion {
   changelog?: string;
   readme?: string;
   codeUrl?: string;
-  previewUrl?: string;
-  buildState?: BuildState;
   commitSha: string; // Unique commit identifier
   createdBy: string;
   createdAt: string;
@@ -101,6 +99,7 @@ export interface BuildArtifact {
 export interface BuildJob {
   id: string;
   componentId: string;
+  versionId?: string;
   component: string;
   version: string;
   status: BuildStatus;
@@ -112,6 +111,43 @@ export interface BuildJob {
   updatedAt: string;
   startedAt?: string;
   endedAt?: string;
+}
+
+// ========================================
+// Collections / Follows / Notifications (Phase 5)
+// ========================================
+
+export interface Collection {
+  id: string;
+  ownerId: string;
+  name: string;
+  description?: string;
+  componentIds: string[];
+  visibility: "public" | "private";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FollowTargetType = "user" | "component";
+
+export interface Follow {
+  id: string;
+  followerId: string;
+  targetType: FollowTargetType;
+  targetId: string;
+  createdAt: string;
+}
+
+export type NotificationType = "new_version" | "comment" | "build_completed";
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  componentId?: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
 }
 
 // ========================================
@@ -246,7 +282,6 @@ export interface VersionCreateRequest {
   changelog?: string;
   readme?: string;
   codeUrl?: string;
-  previewUrl?: string;
   commitSha?: string; // Commit SHA for the version
 }
 
@@ -315,6 +350,31 @@ export interface UserProfileResponse {
     totalComponents: number;
   };
   status: string;
+}
+
+export interface CollectionCreateRequest {
+  name: string;
+  description?: string;
+  visibility?: "public" | "private";
+}
+
+export interface CollectionCreateResponse {
+  status: string;
+  collection: Collection;
+}
+
+export interface CollectionsListResponse {
+  collections: Collection[];
+}
+
+export interface FollowRequest {
+  targetType: FollowTargetType;
+  targetId: string;
+}
+
+export interface NotificationsListResponse {
+  notifications: Notification[];
+  unreadCount: number;
 }
 
 // ========================================

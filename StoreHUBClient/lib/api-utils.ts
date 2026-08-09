@@ -1,4 +1,4 @@
-import type { BuildState, BuildStatus } from "@/types";
+import type { BuildStatus } from "@/types";
 
 // ========================================
 // Validation Helpers
@@ -158,34 +158,6 @@ export function getBuildStatusBgColor(status: BuildStatus): string {
  */
 export function isBuildPending(status: BuildStatus): boolean {
   return status === "queued" || status === "running";
-}
-
-/**
- * Get human-readable version build state label
- */
-export function getVersionBuildStateLabel(state: BuildState): string {
-  const labels: Record<BuildState, string> = {
-    none: "Not built",
-    queued: "Build queued",
-    running: "Building",
-    ready: "Ready",
-    error: "Build failed",
-  };
-  return labels[state] || state;
-}
-
-/**
- * Get version build state color
- */
-export function getVersionBuildStateColor(state: BuildState): string {
-  const colors: Record<BuildState, string> = {
-    none: "text-gray-500 dark:text-gray-400",
-    queued: "text-yellow-600 dark:text-yellow-400",
-    running: "text-blue-600 dark:text-blue-400",
-    ready: "text-green-600 dark:text-green-400",
-    error: "text-red-600 dark:text-red-400",
-  };
-  return colors[state] || "text-gray-600 dark:text-gray-400";
 }
 
 // ========================================

@@ -18,7 +18,7 @@ func EnsureIndexes(client *mongo.Client) error {
 	// components: slug unique
 	_, _ = db.Collection("components").Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "slug", Value: 1}},
-		Options: nil,
+		Options: options.Index().SetUnique(true),
 	})
 
 	// components: weighted text index for search relevance (name > tags > description)
@@ -38,19 +38,28 @@ func EnsureIndexes(client *mongo.Client) error {
 	// component_versions: componentId + version unique
 	_, _ = db.Collection("component_versions").Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "version", Value: 1}},
-		Options: nil,
+		Options: options.Index().SetUnique(true),
 	})
 
 	// component_versions: componentId + commitSha unique (prevent duplicate commits)
 	_, _ = db.Collection("component_versions").Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "commitSha", Value: 1}},
-		Options: nil,
+		Options: options.Index().SetUnique(true),
 	})
 
-	// ratings: one rating per user per component
-	_, _ = db.Collection("ratings").Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "userId", Value: 1}},
-		Options: options.Index().SetUnique(true),
+	// interactions: one like/rating per user per component; comments allow
+	// many per user, so the unique constraint only applies to like/rating.
+	_, _ = db.Collection("interactions").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "componentId", Value: 1}, {Key: "userId", Value: 1}, {Key: "type", Value: 1}},
+		Options: options.Index().
+			SetUnique(true).
+			SetPartialFilterExpression(bson.M{"type": bson.M{"$in": bson.A{"like", "rating"}}}),
+	})
+
+	// interactions: paginated listing of comments/ratings for a component
+	_, _ = db.Collection("interactions").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "componentId", Value: 1}, {Key: "type", Value: 1}, {Key: "createdAt", Value: -1}},
+		Options: nil,
 	})
 
 	// build_jobs: filter by component/version/status
@@ -58,6 +67,24 @@ func EnsureIndexes(client *mongo.Client) error {
 		{Keys: bson.D{{Key: "component", Value: 1}}},
 		{Keys: bson.D{{Key: "version", Value: 1}}},
 		{Keys: bson.D{{Key: "status", Value: 1}}},
+	})
+
+	// collections: list a user's collections
+	_, _ = db.Collection("collections").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "ownerId", Value: 1}},
+		Options: nil,
+	})
+
+	// follows: a user can only follow the same target once
+	_, _ = db.Collection("follows").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "followerId", Value: 1}, {Key: "targetType", Value: 1}, {Key: "targetId", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
+	// notifications: a user's feed, unread-first
+	_, _ = db.Collection("notifications").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "userId", Value: 1}, {Key: "read", Value: 1}, {Key: "createdAt", Value: -1}},
+		Options: nil,
 	})
 
 	return nil

@@ -60,6 +60,22 @@ func Del(ctx context.Context, keys ...string) {
 	_ = Client.Del(ctx, keys...).Err()
 }
 
+// SetNX sets key only if absent, returning true when this call was the one
+// that set it (i.e. the first sighting within the TTL window). Degrades to
+// always-true when Redis is unreachable, so callers gating a counter
+// increment on it keep incrementing (uncounted-dedup) rather than dropping
+// counts entirely.
+func SetNX(ctx context.Context, key string, val string, ttl time.Duration) bool {
+	if Client == nil {
+		return true
+	}
+	ok, err := Client.SetNX(ctx, key, val, ttl).Result()
+	if err != nil {
+		return true
+	}
+	return ok
+}
+
 // Incr bumps an integer key (creating it at 1 if absent) and returns the new
 // value — used as a cheap "epoch" counter to invalidate a whole family of
 // cache keys at once without enumerating them.

@@ -109,10 +109,10 @@ export default async function ComponentDetail({
                     </span>
                   )}
                 </h1>
-                <LikeButton 
-                   slug={comp.slug} 
-                   initialLikeCount={comp.likeCount || 0} 
-                   initialLikedBy={comp.likedBy || []} 
+                <LikeButton
+                   slug={comp.slug}
+                   initialLikeCount={comp.likeCount || 0}
+                   initialLikedByMe={comp.likedByMe || false}
                 />
               </div>
               

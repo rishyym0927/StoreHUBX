@@ -6,6 +6,7 @@ import { VersionsDisplay } from "./version-list";
 import { AutoDeploy } from "./auto-deploy";
 import { PreviewIframe } from "./preview-iframe";
 import { Markdown } from "./markdown";
+import { useBuilds } from "@/hooks/use-api";
 
 interface ComponentDetailTabsProps {
   component: Component;
@@ -18,7 +19,11 @@ export function ComponentDetailTabs({ component, versions, readme }: ComponentDe
 
   const latestVersion = versions && versions.length > 0 ? versions[0] : null;
   const isLinked = component.repoLink && component.repoLink.owner && component.repoLink.repo;
-  const hasPreview = latestVersion?.previewUrl;
+  // Preview URL is derived from the latest build for the latest version —
+  // ComponentVersion no longer carries its own previewUrl field.
+  const { data: latestVersionBuilds } = useBuilds(component.slug, latestVersion?.version ?? "");
+  const previewUrl = latestVersionBuilds?.find((b) => b.status === "success")?.artifacts?.bundleUrl;
+  const hasPreview = !!previewUrl;
   const hasReadme = !!readme;
 
   return (
@@ -102,8 +107,8 @@ export function ComponentDetailTabs({ component, versions, readme }: ComponentDe
                 Version: {latestVersion.version}
               </p>
             </div>
-            <PreviewIframe 
-              url={latestVersion.previewUrl}
+            <PreviewIframe
+              url={previewUrl}
               height={600}
             />
           </div>

@@ -9,10 +9,10 @@ import (
 type BuildStatus string
 
 const (
-	BuildQueued   BuildStatus = "queued"
-	BuildRunning  BuildStatus = "running"
-	BuildSuccess  BuildStatus = "success"
-	BuildError    BuildStatus = "error"
+	BuildQueued  BuildStatus = "queued"
+	BuildRunning BuildStatus = "running"
+	BuildSuccess BuildStatus = "success"
+	BuildError   BuildStatus = "error"
 )
 
 type BuildArtifact struct {
@@ -30,10 +30,11 @@ type BuildRepo struct {
 type BuildJob struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ComponentID primitive.ObjectID `bson:"componentId" json:"componentId"`
-	Component   string             `bson:"component" json:"component"`   // slug (for convenience)
-	Version     string             `bson:"version" json:"version"`       // e.g., "0.1.0"
-	Status      BuildStatus        `bson:"status" json:"status"`         // queued|running|success|error
-	OwnerID     string             `bson:"ownerId" json:"ownerId"`       // from JWT (providerId)
+	VersionID   primitive.ObjectID `bson:"versionId,omitempty" json:"versionId,omitempty"` // FK to the ComponentVersion this job builds
+	Component   string             `bson:"component" json:"component"`                     // slug (for convenience)
+	Version     string             `bson:"version" json:"version"`                         // e.g., "0.1.0"
+	Status      BuildStatus        `bson:"status" json:"status"`                           // queued|running|success|error
+	OwnerID     string             `bson:"ownerId" json:"ownerId"`                         // from JWT (providerId)
 	Repo        BuildRepo          `bson:"repo" json:"repo"`
 	Artifacts   *BuildArtifact     `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 	Logs        []string           `bson:"logs,omitempty" json:"logs,omitempty"`
