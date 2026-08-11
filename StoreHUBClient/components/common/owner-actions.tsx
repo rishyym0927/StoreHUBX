@@ -5,7 +5,8 @@ import { useAuth } from "@/lib/store";
 import { useToast } from "@/components/common/toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { Lock, Trash2 } from "lucide-react";
 
 interface OwnerActionsProps {
@@ -34,16 +35,17 @@ export function OwnerActions({
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  // Auto-cancel the confirm state if the owner doesn't click again — avoids
-  // a "Confirm Delete?" button staying armed indefinitely if they walk away.
-  useEffect(() => {
-    if (!confirmingDelete) return;
-    const timer = setTimeout(() => setConfirmingDelete(false), 4000);
-    return () => clearTimeout(timer);
-  }, [confirmingDelete]);
+  const { confirming: confirmingDelete, pending: deleting, trigger: handleDelete } = useConfirmDelete(async () => {
+    if (!token) return;
+    setError(null);
+    try {
+      await componentApi.delete(componentSlug, token);
+      showToast("Component deleted.", "success");
+      router.push("/me");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete component");
+    }
+  });
 
   if (!isOwner) {
     return (
@@ -96,25 +98,6 @@ export function OwnerActions({
       setError(err instanceof Error ? err.message : "Failed to remove collaborator");
     } finally {
       setUpdating(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!token) return;
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    setDeleting(true);
-    setError(null);
-    try {
-      await componentApi.delete(componentSlug, token);
-      showToast("Component deleted.", "success");
-      router.push("/me");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete component");
-      setConfirmingDelete(false);
-      setDeleting(false);
     }
   };
 

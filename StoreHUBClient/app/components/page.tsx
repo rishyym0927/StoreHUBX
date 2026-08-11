@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useComponents } from "@/hooks/use-api";
 import { ComponentCard } from "@/components/common/component-card";
@@ -17,7 +17,16 @@ export default function ComponentsPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [frameworkFilter, setFrameworkFilter] = useState(searchParams.get("framework") || "");
   const [tagsFilter, setTagsFilter] = useState(searchParams.get("tags") || "");
-  
+
+  // Keep the inputs in sync with the URL on browser back/forward navigation,
+  // where the URL changes without the user touching these fields directly.
+  useEffect(() => {
+    setSearchQuery(searchParams.get("q") || "");
+    setFrameworkFilter(searchParams.get("framework") || "");
+    setTagsFilter(searchParams.get("tags") || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Get page and limit from URL
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   const itemsPerPage = parseInt(searchParams.get("limit") || "10", 10);
@@ -111,6 +120,7 @@ export default function ComponentsPage() {
               placeholder="Search by name or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleFilterChange()}
               className="w-full border-2 border-black dark:border-white p-3 bg-transparent text-sm font-mono focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:focus:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all"
             />
           </div>

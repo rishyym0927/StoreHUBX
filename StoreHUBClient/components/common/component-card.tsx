@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Component } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
 import { RepoStatsBadge } from "@/components/common/repo-stats-badge";
 import { useAuth } from "@/lib/store";
 import { componentApi } from "@/lib/api";
+import { formatDate } from "@/lib/api-utils";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { Trash2 } from "lucide-react";
 
 interface ComponentCardProps {
@@ -28,34 +30,23 @@ export function ComponentCard({
   const isLinked = component.repoLink?.owner && component.repoLink?.repo;
   const isOwner = currentUserId && currentUserId === component.ownerId;
 
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!confirmingDelete) return;
-    const timer = setTimeout(() => setConfirmingDelete(false), 4000);
-    return () => clearTimeout(timer);
-  }, [confirmingDelete]);
-
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const { confirming: confirmingDelete, pending: deleting, trigger } = useConfirmDelete(async () => {
     if (!token) return;
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    setDeleting(true);
     setDeleteError(null);
     try {
       await componentApi.delete(component.slug, token);
       onDeleted?.(component.slug);
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Failed to delete");
-      setConfirmingDelete(false);
-      setDeleting(false);
     }
+  });
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return;
+    trigger();
   };
 
   return (
@@ -143,11 +134,7 @@ export function ComponentCard({
             <div className="flex items-center gap-1.5">
               <span className="text-black/60 dark:text-white/60">Created:</span>
               <span className="font-bold">
-                {new Date(component.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDate(component.createdAt)}
               </span>
             </div>
           )}
@@ -203,11 +190,7 @@ export function ComponentCard({
               </svg>
               <span className="text-black/60 dark:text-white/60">Updated:</span>
               <span className="font-bold">
-                {new Date(component.updatedAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDate(component.updatedAt)}
               </span>
             </div>
           )}

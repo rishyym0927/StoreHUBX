@@ -1,3 +1,4 @@
+import * as Avatar from "@radix-ui/react-avatar";
 import { RepoLink, GitHubRepoInfo, GitHubLanguages, GitHubLatestCommit, GitHubContributor } from "@/types";
 import { formatRelativeTime } from "@/lib/api-utils";
 import { Star, GitFork, CircleDot } from "lucide-react";
@@ -199,14 +200,16 @@ export function RepositoryInfo({ repoLink, repoInfo, languages, latestCommit, co
             className="flex items-center -space-x-2"
           >
             {contributors.slice(0, 8).map((c) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Avatar.Root
                 key={c.login}
-                src={c.avatarUrl}
-                alt={c.login}
                 title={`${c.login} (${c.contributions} commits)`}
-                className="w-6 h-6 border-2 border-white dark:border-black bg-black/10 dark:bg-white/10 object-cover"
-              />
+                className="w-6 h-6 border-2 border-white dark:border-black bg-black/10 dark:bg-white/10 overflow-hidden"
+              >
+                <Avatar.Image src={c.avatarUrl} alt={c.login} className="w-full h-full object-cover" />
+                <Avatar.Fallback className="w-full h-full flex items-center justify-center text-[9px] font-bold">
+                  {c.login.charAt(0).toUpperCase()}
+                </Avatar.Fallback>
+              </Avatar.Root>
             ))}
             {contributors.length > 8 && (
               <span className="flex items-center justify-center w-6 h-6 border-2 border-white dark:border-black bg-black text-white dark:bg-white dark:text-black text-[9px] font-bold">

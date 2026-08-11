@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import * as Avatar from "@radix-ui/react-avatar";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/common/protected-route";
 import { ComponentCard } from "@/components/common/component-card";
@@ -50,7 +51,6 @@ export default function Me() {
         setError(null);
         const data = await userApi.getProfile(token);
         setProfile(data);
-        console.log("Profile data:", data);
 
         // Fetch Github specific details if applicable
         if (data.user?.provider === 'github' && data.user?.username) {
@@ -150,12 +150,12 @@ export default function Me() {
               title="Login Required"
               description="You need to be logged in to view your profile."
               action={
-                <Link
-                  href="/auth/callback"
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_BASE}/auth/github/login`}
                   className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-transform hover:scale-105 active:scale-95"
                 >
                   Login
-                </Link>
+                </a>
               }
             />
           )}
@@ -172,17 +172,18 @@ export default function Me() {
                 <div className="px-6 sm:px-10 pb-10 relative">
                   {/* Floating Avatar */}
                   <div className="absolute -top-16 sm:-top-20 w-32 h-32 sm:w-40 sm:h-40 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-                    {profile.user.avatarUrl ? (
-                      <img
+                    <Avatar.Root className="w-full h-full">
+                      <Avatar.Image
                         src={profile.user.avatarUrl}
-                        alt={profile.user.name || 'User'}
+                        alt={profile.user.name || "User"}
                         className="w-full h-full object-cover"
                       />
-                    ) : (
-                      <span className="text-6xl sm:text-8xl font-black text-black dark:text-white">
-                        {profile.user.name?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    )}
+                      <Avatar.Fallback className="w-full h-full flex items-center justify-center">
+                        <span className="text-6xl sm:text-8xl font-black text-black dark:text-white">
+                          {profile.user.name?.charAt(0).toUpperCase() || "U"}
+                        </span>
+                      </Avatar.Fallback>
+                    </Avatar.Root>
                   </div>
 
                   {/* Main Info */}

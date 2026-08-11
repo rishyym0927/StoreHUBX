@@ -44,9 +44,19 @@ export function RatingStars({
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={interactive ? `Rate ${star} star${star > 1 ? "s" : ""}` : undefined}
             onMouseEnter={() => interactive && setHovered(star)}
             onClick={() => handleRate(star)}
-            className={`${SIZE_CLASSES[size]} ${
+            onKeyDown={(e) => {
+              if (!interactive) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleRate(star);
+              }
+            }}
+            className={`${SIZE_CLASSES[size]} ${interactive ? "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" : ""} ${
               interactive && punched !== null && star <= punched ? "animate-punch" : ""
             } ${
               star <= Math.round(displayValue)

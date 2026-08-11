@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { userApi, ApiError } from "@/lib/api";
-import { Badge } from "@/components/common/badge";
 import { EmptyState } from "@/components/common/empty-state";
+import { ComponentCard } from "@/components/common/component-card";
+import { UserAvatar } from "@/components/common/user-avatar";
 import { useAuth } from "@/lib/store";
 import { AlertTriangle, Package } from "lucide-react";
-import type { UserProfileResponse, Component } from "@/types";
+import type { UserProfileResponse } from "@/types";
 
 export default function UserProfile() {
   const params = useParams();
@@ -82,21 +82,7 @@ export default function UserProfile() {
             <div className="border-b border-black dark:border-white pb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 {/* Avatar */}
-                <div className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 border-2 border-black dark:border-white overflow-hidden">
-                  {profile.user.avatarUrl ? (
-                    <img
-                      src={profile.user.avatarUrl}
-                      alt={profile.user.name || 'User'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-black dark:bg-white flex items-center justify-center">
-                      <span className="text-4xl sm:text-5xl font-bold text-white dark:text-black">
-                        {profile.user.name?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <UserAvatar src={profile.user.avatarUrl} name={profile.user.name} size="lg" />
 
                 {/* User Info */}
                 <div className="flex-1 min-w-0">
@@ -197,49 +183,3 @@ function StatCard({
   );
 }
 
-function ComponentCard({ component }: { component: Component }) {
-  return (
-    <Link
-      href={`/components/${component.slug}`}
-      className="block border border-black dark:border-white p-4 sm:p-6 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg sm:text-xl font-bold mb-2 wrap-break-word">{component.name}</h3>
-          <p className="text-sm font-mono text-black/60 dark:text-white/60 mb-3 line-clamp-2">
-            {component.description}
-          </p>
-          
-          {/* Tags & Frameworks */}
-          {component.frameworks && component.frameworks.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {component.frameworks.map((fw) => (
-                <Badge key={fw} variant="framework">{fw}</Badge>
-              ))}
-            </div>
-          )}
-
-          {component.tags && component.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {component.tags.slice(0, 6).map((tag) => (
-                <Badge key={tag} variant="tag">{tag}</Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Metadata */}
-        <div className="flex sm:flex-col gap-3 sm:gap-2 text-xs font-mono text-black/60 dark:text-white/60 sm:text-right shrink-0">
-          {component.license && <div>{component.license}</div>}
-          <div>
-            {new Date(component.createdAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}

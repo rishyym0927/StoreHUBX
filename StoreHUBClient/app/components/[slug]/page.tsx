@@ -11,6 +11,7 @@ import { ComponentComments } from "@/components/common/component-comments";
 import { ComponentRatings } from "@/components/common/component-ratings";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
+import { formatDate } from "@/lib/api-utils";
 import { CheckCircle2 } from "lucide-react";
 
 import type {
@@ -37,7 +38,6 @@ export default async function ComponentDetail({
   
   try {
     comp = await componentApi.get(slug);
-    console.log("Fetched component:", comp);
   } catch (error) {
     console.error("Failed to fetch component:", error);
     throw error; // Let Next.js error boundary handle it
@@ -261,13 +261,13 @@ export default async function ComponentDetail({
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono text-black/60 dark:text-white/60">Created</span>
                       <span className="font-mono font-bold">
-                        {new Date(comp.createdAt).toLocaleDateString()}
+                        {formatDate(comp.createdAt)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono text-black/60 dark:text-white/60">Updated</span>
                       <span className="font-mono font-bold">
-                        {new Date(comp.updatedAt).toLocaleDateString()}
+                        {formatDate(comp.updatedAt)}
                       </span>
                     </div>
                   </div>

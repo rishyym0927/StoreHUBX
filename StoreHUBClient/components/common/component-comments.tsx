@@ -22,6 +22,14 @@ export function ComponentComments({ slug }: CommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!confirmingId) return;
+    const timer = setTimeout(() => setConfirmingId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmingId]);
 
   useEffect(() => {
     fetchComments();
@@ -58,12 +66,20 @@ export function ComponentComments({ slug }: CommentsProps) {
 
   const handleDelete = async (commentId: string) => {
     if (!token) return;
+    if (confirmingId !== commentId) {
+      setConfirmingId(commentId);
+      return;
+    }
+    setDeletingId(commentId);
     try {
       await commentApi.delete(slug, commentId, token);
       setComments(comments.filter(c => c.id !== commentId));
     } catch (error) {
       console.error("Failed to delete comment:", error);
       showToast("Failed to delete comment. Please try again.", "error");
+    } finally {
+      setDeletingId(null);
+      setConfirmingId(null);
     }
   };
 
@@ -141,9 +157,14 @@ export function ComponentComments({ slug }: CommentsProps) {
                 <div className="mt-3 text-right">
                   <button
                     onClick={() => handleDelete(comment.id)}
-                    className="text-xs font-mono font-bold text-red-600 hover:underline"
+                    disabled={deletingId === comment.id}
+                    className="text-xs font-mono font-bold text-red-600 hover:underline disabled:opacity-50"
                   >
-                    Delete
+                    {deletingId === comment.id
+                      ? "Deleting..."
+                      : confirmingId === comment.id
+                      ? "Click again to confirm"
+                      : "Delete"}
                   </button>
                 </div>
               )}

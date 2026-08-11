@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { versionApi, githubApi } from "@/lib/api";
 import { WebhookSetup } from "@/components/common/webhook-setup";
@@ -14,6 +15,7 @@ interface AutoDeployProps {
 }
 
 export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployProps) {
+  const router = useRouter();
   const token = useAuth((s) => s.token);
   const user = useAuth((s) => s.user);
   const [checking, setChecking] = useState(false);
@@ -27,11 +29,7 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
   const isLinked = component.repoLink && component.repoLink.owner && component.repoLink.repo;
   
   // Check if current user is the owner
-  const isOwner = user && token ;
-
-  // Don't show auto-deploy if not owner
-
-  console.log("Rendering AutoDeploy for component:", component.slug);
+  const isOwner = !!(user && token && user.providerId === component.ownerId);
 
   // Check for new commits
   const checkForNewCommits = async () => {
@@ -96,17 +94,21 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
         onDeploySuccess();
       }
 
-      // Show success message
+      // Show success message, then softly refresh the page data
       setTimeout(() => {
-        window.location.reload();
+        router.refresh();
       }, 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to deploy:", err);
-      setError(err.message || "Failed to deploy new version");
+      setError(err instanceof Error ? err.message : "Failed to deploy new version");
     } finally {
       setDeploying(false);
     }
   };
+
+  if (!isOwner) {
+    return null;
+  }
 
   return (
     <div className="border border-black dark:border-white p-6">
@@ -201,7 +203,7 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
             How does auto-deploy work?
           </summary>
           <div className="mt-2 space-y-1 text-sm font-mono text-black/60 dark:text-white/60">
-            <p>• Click "Check Updates" to fetch the latest commit</p>
+            <p>• Click &quot;Check Updates&quot; to fetch the latest commit</p>
             <p>• Deploy new commits with one click</p>
             <p>• Auto-incremented version numbers</p>
             <p>• Each commit can only be deployed once</p>

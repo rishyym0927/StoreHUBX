@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 
@@ -8,6 +8,7 @@ export default function AuthCallback() {
   const params = useSearchParams();
   const router = useRouter();
   const setAuth = useAuth((s) => s.setAuth);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = params.get("token");
@@ -16,23 +17,23 @@ export default function AuthCallback() {
     if (token && encodedUser) {
       try {
         const user = JSON.parse(atob(encodedUser));
-        console.log("Setting auth with token and user data:", { token, user });
         setAuth(token, user);
         router.replace("/");
-      } catch (error) {
-        console.error("Invalid user payload:", error);
-        router.replace("/");
+      } catch (err) {
+        console.error("Invalid user payload:", err);
+        setError("Sign-in failed: the callback data was malformed.");
+        setTimeout(() => router.replace("/"), 2000);
       }
     } else {
       console.warn("Missing token or user data in callback URL");
-      // If your backend returns raw JSON instead of redirect with params, handle that flow separately
-      router.replace("/");
+      setError("Sign-in failed: missing authentication data.");
+      setTimeout(() => router.replace("/"), 2000);
     }
   }, [params, router, setAuth]);
 
   return (
     <div className="py-20 text-center opacity-80">
-      Completing sign-in…
+      {error ?? "Completing sign-in…"}
     </div>
   );
 }

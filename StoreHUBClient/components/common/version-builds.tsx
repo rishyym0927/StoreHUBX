@@ -14,7 +14,7 @@ interface VersionBuildsProps {
 }
 
 export function VersionBuilds({ slug, version }: VersionBuildsProps) {
-  const { data: builds, loading, error } = useBuilds(slug, version);
+  const { data: builds, loading, error, refetch } = useBuilds(slug, version);
   const [expandedBuildId, setExpandedBuildId] = useState<string | null>(null);
   const { token } = useAuth();
   const [rebuilding, setRebuilding] = useState(false);
@@ -99,8 +99,8 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
     
     try {
       await buildApi.enqueue(slug, version, token);
-      // Refresh the page to show the new build
-      window.location.reload();
+      // Refetch the build list to show the new build
+      await refetch();
     } catch (err) {
       setRebuildError(err instanceof Error ? err.message : "Failed to rebuild");
     } finally {

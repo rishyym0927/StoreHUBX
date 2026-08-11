@@ -17,16 +17,18 @@ export function LikeButton({ slug, initialLikeCount, initialLikedByMe }: LikeBut
   const router = useRouter();
   const { showToast } = useToast();
 
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(initialLikedByMe);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
   const [punch, setPunch] = useState(false);
 
-  // Sync state once user auth hydrates from local storage
+  // Re-sync if auth hydrates after first paint (e.g. persisted store
+  // resolving late) or the like count is refreshed from the server.
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading) {
       setIsLiked(initialLikedByMe);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, initialLikedByMe]);
 
   const handleLike = async () => {

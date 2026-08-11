@@ -83,8 +83,17 @@ export function ComponentRatings({ slug }: RatingsProps) {
 
     try {
       const saved = await ratingApi.upsert(slug, { score, review }, token);
-      setRatings((prev) => [saved, ...prev.filter((r) => r.userId !== saved.userId)]);
-      await fetchRatings();
+      // Merge the saved rating locally instead of refetching — a refetch
+      // would re-derive `score`/`review` from the server list and could
+      // clobber an edit the user started while this request was in flight.
+      setRatings((prev) => {
+        const merged = [saved, ...prev.filter((r) => r.userId !== saved.userId)];
+        setRatingCount(merged.length);
+        setAverageRating(
+          merged.reduce((sum, r) => sum + r.score, 0) / merged.length
+        );
+        return merged;
+      });
     } catch (error) {
       console.error("Failed to submit rating:", error);
       setRatings(previousRatings);
