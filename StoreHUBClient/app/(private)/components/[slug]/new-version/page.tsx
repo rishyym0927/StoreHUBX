@@ -12,6 +12,9 @@ import type { VersionCreateRequest } from "@/types";
 import { BuildStatus } from "@/components/common/build-status";
 import { CheckCircle2, AlertTriangle, PartyPopper } from "lucide-react";
 
+const inputClass =
+  "w-full border-2 border-black dark:border-white p-3 bg-transparent font-mono text-sm placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none";
+
 export default function NewVersion({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string>("");
   const router = useRouter();
@@ -97,109 +100,123 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
   return (
     <ProtectedRoute>
       <OwnershipGuard slug={slug}>
-        <div className="max-w-xl space-y-6">
+        <div className="max-w-xl mx-auto space-y-6 pb-12">
         {!showBuildStatus ? (
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-semibold">Add New Version</h1>
-              <p className="text-sm opacity-70 mt-1">Component: <span className="font-mono font-medium">{slug}</span></p>
+          <>
+            <div className="border-2 border-black dark:border-white p-6 md:p-8">
+              <div className="inline-block border border-black dark:border-white px-2 py-1 text-xs font-mono mb-4">
+                NEW VERSION
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Add New Version</h1>
+              <p className="text-sm font-mono text-black/60 dark:text-white/60 mt-2">
+                Component: <span className="font-bold">{slug}</span>
+              </p>
               {component?.repoLink && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Linked to {component.repoLink.owner}/{component.repoLink.repo} - Build will be triggered automatically
+                <p className="text-xs font-mono text-green-600 dark:text-green-400 mt-2 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Linked to {component.repoLink.owner}/{component.repoLink.repo} — build will be triggered automatically
                 </p>
               )}
               {!component?.repoLink && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 flex items-center gap-1.5">
+                <p className="text-xs font-mono text-yellow-600 dark:text-yellow-400 mt-2 flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> No repository linked. Consider linking a GitHub repo for automated builds.
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="p-3 border-2 border-red-500/50 bg-red-500/10 rounded-xl text-sm">
-                <p className="text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
+              <div className="p-4 border-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950">
+                <p className="text-sm font-mono text-red-600 dark:text-red-400 font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
+                </p>
               </div>
             )}
 
-            <div>
-              <input
-                name="version"
-                placeholder="Version (e.g., 1.0.0)"
-                required
-                className={`w-full border rounded-xl p-3 bg-transparent ${formErrors.version ? 'border-red-500' : ''}`}
-              />
-              {formErrors.version && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.version}</p>
-              )}
-              <p className="text-xs opacity-60 mt-1">Use semantic versioning: major.minor.patch</p>
-            </div>
-
-            <div>
-              <textarea
-                name="changelog"
-                placeholder="Changelog (what changed in this release?)"
-                className="w-full border rounded-xl p-3 bg-transparent"
-              />
-              <p className="text-xs opacity-60 mt-1">Optional: Describe what's new or changed</p>
-            </div>
-
-            <div>
-              <input
-                name="codeUrl"
-                placeholder="GitHub Gist or Repository URL"
-                className={`w-full border rounded-xl p-3 bg-transparent ${formErrors.codeUrl ? 'border-red-500' : ''}`}
-              />
-              {formErrors.codeUrl && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.codeUrl}</p>
-              )}
-              <p className="text-xs opacity-60 mt-1">Optional: Link to source code</p>
-            </div>
-
-            <div>
-              <textarea
-                name="readme"
-                placeholder="README / Usage (Markdown supported)"
-                className="w-full border rounded-xl p-3 bg-transparent min-h-[150px]"
-              />
-              <p className="text-xs opacity-60 mt-1">Optional: Usage instructions or documentation (Markdown supported)</p>
-            </div>
-
-            <button 
-              disabled={loading} 
-              className="px-4 py-2 rounded-xl border disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Publishing..." : "Publish Version"}
-            </button>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-semibold flex items-center gap-2">Version Published! <PartyPopper className="w-5 h-5" /></h1>
-              <p className="text-sm opacity-70 mt-1">
-                {component?.repoLink 
-                  ? "Build has been automatically queued for your component."
-                  : "Version created successfully"
-                }
-              </p>
-            </div>
-
-            <div className="border-2 border-green-200 dark:border-green-800 rounded-xl p-6 bg-green-50 dark:bg-green-900/20">
-              <div className="flex items-center gap-3 mb-3">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="font-semibold text-green-900 dark:text-green-100">Version created successfully</span>
+            <form onSubmit={onSubmit} className="border-2 border-black dark:border-white p-6 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wide">Version</label>
+                <input
+                  name="version"
+                  placeholder="1.0.0"
+                  required
+                  className={`${inputClass} ${formErrors.version ? "border-red-600 dark:border-red-400" : ""}`}
+                />
+                {formErrors.version && (
+                  <p className="text-xs font-mono text-red-600 dark:text-red-400">{formErrors.version}</p>
+                )}
+                <p className="text-xs font-mono text-black/50 dark:text-white/50">Use semantic versioning: major.minor.patch</p>
               </div>
-              <p className="text-sm text-green-800 dark:text-green-200 opacity-80">
-                Your component version has been published and build job is in queue.
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wide">Changelog</label>
+                <textarea
+                  name="changelog"
+                  placeholder="What changed in this release?"
+                  rows={3}
+                  className={inputClass}
+                />
+                <p className="text-xs font-mono text-black/50 dark:text-white/50">Optional — describe what&apos;s new or changed.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wide">Code URL</label>
+                <input
+                  name="codeUrl"
+                  placeholder="GitHub Gist or repository URL"
+                  className={`${inputClass} ${formErrors.codeUrl ? "border-red-600 dark:border-red-400" : ""}`}
+                />
+                {formErrors.codeUrl && (
+                  <p className="text-xs font-mono text-red-600 dark:text-red-400">{formErrors.codeUrl}</p>
+                )}
+                <p className="text-xs font-mono text-black/50 dark:text-white/50">Optional — link to source code.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wide">README / Usage</label>
+                <textarea
+                  name="readme"
+                  placeholder="Usage instructions or documentation (Markdown supported)"
+                  rows={6}
+                  className={inputClass}
+                />
+                <p className="text-xs font-mono text-black/50 dark:text-white/50">Optional — Markdown supported.</p>
+              </div>
+
+              <button
+                disabled={loading}
+                className="brutal-lift w-full md:w-auto px-6 py-3 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-mono font-bold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
+              >
+                {loading ? "Publishing..." : "Publish Version"}
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <div className="border-2 border-black dark:border-white p-6 md:p-8">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight flex items-center gap-2">
+                Version Published! <PartyPopper className="w-6 h-6" />
+              </h1>
+              <p className="text-sm font-mono text-black/60 dark:text-white/60 mt-2">
+                {component?.repoLink
+                  ? "Build has been automatically queued for your component."
+                  : "Version created successfully."}
               </p>
             </div>
 
-            <div className="text-center pt-4">
-              <p className="text-sm opacity-70 mb-3">Redirecting to component page...</p>
+            <div className="border-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-950 p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <CheckCircle2 className="w-5 h-5 text-green-700 dark:text-green-400 shrink-0" />
+                <span className="font-mono font-bold text-green-900 dark:text-green-100">Version created successfully</span>
+              </div>
+              <p className="text-sm font-mono text-green-800 dark:text-green-200 opacity-80">
+                Your component version has been published and the build job is in queue.
+              </p>
+            </div>
+
+            <div className="text-center pt-2">
+              <p className="text-xs font-mono text-black/60 dark:text-white/60 mb-3">Redirecting to component page...</p>
               <button
                 onClick={() => router.push(`/components/${slug}`)}
-                className="px-4 py-2 rounded-xl border hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="px-6 py-3 border-2 border-black dark:border-white font-mono font-bold uppercase tracking-wide hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
                 Go to Component
               </button>
