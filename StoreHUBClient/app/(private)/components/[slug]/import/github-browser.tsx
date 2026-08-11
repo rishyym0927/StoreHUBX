@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/store";
 import { githubApi, componentApi } from "@/lib/api";
 import { useGitHubRepos, useGitHubBranches } from "@/hooks/use-api";
@@ -87,7 +87,7 @@ export function GithubBrowser({ slug, initialOwner, initialRepo, initialRef }: G
   }, [repos, searchTerm]);
 
   // When selecting a repo, automatically use its default branch
-  const onSelectRepo = (r: GitHubRepo) => {
+  const onSelectRepo = useCallback((r: GitHubRepo) => {
     setSelectedRepo(r);
     setOwner(r.owner.login);
     setRepo(r.name);
@@ -105,7 +105,7 @@ export function GithubBrowser({ slug, initialOwner, initialRepo, initialRef }: G
       .catch(() => {
         // Best-effort — no suggestions if this fails, linking still works.
       });
-  };
+  }, []);
 
   const toggleSuggestedTag = (topic: string) => {
     setSelectedTags((prev) =>
@@ -144,7 +144,7 @@ export function GithubBrowser({ slug, initialOwner, initialRepo, initialRef }: G
       setStep("browse-folders");
     }
     if (initialRef) setRef(initialRef);
-  }, [repos, loadingRepos, preselectApplied, initialOwner, initialRepo, initialRef]);
+  }, [repos, loadingRepos, preselectApplied, initialOwner, initialRepo, initialRef, onSelectRepo]);
 
   // List contents for current path
   const listContents = async (nextPath: string) => {
