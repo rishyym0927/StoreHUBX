@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { commentApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
 import { useToast } from "@/components/common/toast";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import type { Comment } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,14 +23,6 @@ export function ComponentComments({ slug }: CommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!confirmingId) return;
-    const timer = setTimeout(() => setConfirmingId(null), 4000);
-    return () => clearTimeout(timer);
-  }, [confirmingId]);
 
   useEffect(() => {
     fetchComments();
@@ -64,22 +57,14 @@ export function ComponentComments({ slug }: CommentsProps) {
     }
   };
 
-  const handleDelete = async (commentId: string) => {
+  const deleteComment = async (commentId: string) => {
     if (!token) return;
-    if (confirmingId !== commentId) {
-      setConfirmingId(commentId);
-      return;
-    }
-    setDeletingId(commentId);
     try {
       await commentApi.delete(slug, commentId, token);
-      setComments(comments.filter(c => c.id !== commentId));
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (error) {
       console.error("Failed to delete comment:", error);
       showToast("Failed to delete comment. Please try again.", "error");
-    } finally {
-      setDeletingId(null);
-      setConfirmingId(null);
     }
   };
 
@@ -123,53 +108,70 @@ export function ComponentComments({ slug }: CommentsProps) {
       ) : (
         <div className="space-y-4">
           {comments.map((comment) => (
-            <div key={comment.id} className="p-4 border-2 border-black dark:border-white bg-white dark:bg-black">
-              <div className="flex justify-between items-start mb-3">
-                <Link
-                  href={`/users/${comment.userId}`}
-                  className="flex items-center gap-2 hover:underline group"
-                >
-                  {comment.authorAvatar ? (
-                    <Image
-                      src={comment.authorAvatar}
-                      alt={comment.authorUsername || "User"}
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 rounded-full border border-black dark:border-white group-hover:scale-110 transition-transform"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-bold text-xs uppercase">
-                      {(comment.authorUsername || comment.authorName || comment.userId).charAt(0)}
-                    </div>
-                  )}
-                  <span className="font-bold font-mono text-sm">
-                    {comment.authorName || comment.authorUsername || comment.userId}
-                  </span>
-                </Link>
-                <span className="font-mono text-xs text-black/50 dark:text-white/50">
-                  {new Date(comment.createdAt).toLocaleDateString()} at {new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </span>
-              </div>
-              <p className="font-mono text-sm whitespace-pre-wrap">{comment.content}</p>
-
-              {/* Delete button if owner */}
-              {user?.providerId === comment.userId && (
-                <div className="mt-3 text-right">
-                  <button
-                    onClick={() => handleDelete(comment.id)}
-                    disabled={deletingId === comment.id}
-                    className="text-xs font-mono font-bold text-red-600 hover:underline disabled:opacity-50"
-                  >
-                    {deletingId === comment.id
-                      ? "Deleting..."
-                      : confirmingId === comment.id
-                      ? "Click again to confirm"
-                      : "Delete"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <CommentRow
+              key={comment.id}
+              comment={comment}
+              canDelete={user?.providerId === comment.userId}
+              onDelete={() => deleteComment(comment.id)}
+            />
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentRow({
+  comment,
+  canDelete,
+  onDelete,
+}: {
+  comment: Comment;
+  canDelete: boolean;
+  onDelete: () => Promise<void>;
+}) {
+  const { confirming, pending, trigger } = useConfirmDelete(onDelete);
+
+  return (
+    <div className="p-4 border-2 border-black dark:border-white bg-white dark:bg-black">
+      <div className="flex justify-between items-start mb-3">
+        <Link
+          href={`/users/${comment.userId}`}
+          className="flex items-center gap-2 hover:underline group"
+        >
+          {comment.authorAvatar ? (
+            <Image
+              src={comment.authorAvatar}
+              alt={comment.authorUsername || "User"}
+              width={24}
+              height={24}
+              className="w-6 h-6 rounded-full border border-black dark:border-white group-hover:scale-110 transition-transform"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-bold text-xs uppercase">
+              {(comment.authorUsername || comment.authorName || comment.userId).charAt(0)}
+            </div>
+          )}
+          <span className="font-bold font-mono text-sm">
+            {comment.authorName || comment.authorUsername || comment.userId}
+          </span>
+        </Link>
+        <span className="font-mono text-xs text-black/50 dark:text-white/50">
+          {new Date(comment.createdAt).toLocaleDateString()} at {new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </span>
+      </div>
+      <p className="font-mono text-sm whitespace-pre-wrap">{comment.content}</p>
+
+      {/* Delete button if owner */}
+      {canDelete && (
+        <div className="mt-3 text-right">
+          <button
+            onClick={() => trigger()}
+            disabled={pending}
+            className="text-xs font-mono font-bold text-red-600 hover:underline disabled:opacity-50"
+          >
+            {pending ? "Deleting..." : confirming ? "Click again to confirm" : "Delete"}
+          </button>
         </div>
       )}
     </div>
