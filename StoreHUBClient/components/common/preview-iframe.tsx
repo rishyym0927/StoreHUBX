@@ -13,12 +13,17 @@ export function PreviewIframe({ url, height = 520 }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const src = useMemo(() => {
+  const { src, invalidUrl } = useMemo(() => {
     if (!url) {
-      return "";
+      return { src: "", invalidUrl: false };
     }
-    
-    const u = new URL(url);
+
+    let u: URL;
+    try {
+      u = new URL(url);
+    } catch {
+      return { src: "", invalidUrl: true };
+    }
     const host = u.hostname;
 
     // Normalize common providers to embed URLs
@@ -31,24 +36,24 @@ export function PreviewIframe({ url, height = 520 }: Props) {
       u.searchParams.set("fontsize", "14");
       u.searchParams.set("hidenavigation", "1");
       u.searchParams.set("theme", "dark");
-      return u.toString();
+      return { src: u.toString(), invalidUrl: false };
     }
     if (host.includes("stackblitz.com")) {
       // ex: https://stackblitz.com/edit/slug -> /embed/slug
       if (!u.pathname.startsWith("/embed/")) {
         u.pathname = `/embed${u.pathname}`;
       }
-      return u.toString();
+      return { src: u.toString(), invalidUrl: false };
     }
     if (host.includes("codepen.io") && !u.pathname.includes("/embed/")) {
       // ex: https://codepen.io/user/pen/xyz -> /embed/xyz
       const parts = u.pathname.split("/");
       const penId = parts[parts.length - 1] || "";
       u.pathname = `/embed/${penId}`;
-      return u.toString();
+      return { src: u.toString(), invalidUrl: false };
     }
     // Otherwise render as-is (GitHub Pages, Vercel preview, etc.)
-    return url;
+    return { src: url, invalidUrl: false };
   }, [url]);
   
   // Test if URL is accessible
@@ -75,7 +80,7 @@ export function PreviewIframe({ url, height = 520 }: Props) {
       <div className="border-2 border-black dark:border-white p-8 text-center bg-black/5 dark:bg-white/5">
         <ImageOff className="w-10 h-10 mb-3 mx-auto stroke-1" />
         <p className="font-mono text-sm text-black/60 dark:text-white/60">
-          No preview URL provided
+          {invalidUrl ? "Preview URL is invalid" : "No preview URL provided"}
         </p>
       </div>
     );
