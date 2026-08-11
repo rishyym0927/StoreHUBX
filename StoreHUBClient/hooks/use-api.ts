@@ -206,34 +206,43 @@ export function useBuildStatus(
   useEffect(() => {
     if (!buildId) return;
 
+    let cancelled = false;
+
     fetchBuild();
 
     // Auto-refresh for pending builds
     if (autoRefresh) {
       const interval = setInterval(async () => {
-        if (buildId) {
-          try {
-            const build = await buildApi.getStatus(buildId, token ?? undefined);
-            setState({ data: build, loading: false, error: null });
+        try {
+          const build = await buildApi.getStatus(buildId, token ?? undefined);
+          if (cancelled) return;
+          setState({ data: build, loading: false, error: null });
 
-            // Stop polling if build is complete
-            if (build.status === "success" || build.status === "error") {
-              clearInterval(interval);
-            }
-          } catch (err) {
-            const errorMessage =
-              err instanceof ApiError
-                ? err.message
-                : err instanceof Error
-                ? err.message
-                : "Failed to fetch build status";
-            setState({ data: null, loading: false, error: errorMessage });
+          // Stop polling if build is complete
+          if (build.status === "success" || build.status === "error") {
+            clearInterval(interval);
           }
+        } catch (err) {
+          if (cancelled) return;
+          const errorMessage =
+            err instanceof ApiError
+              ? err.message
+              : err instanceof Error
+              ? err.message
+              : "Failed to fetch build status";
+          setState({ data: null, loading: false, error: errorMessage });
         }
       }, 3000); // Poll every 3 seconds for live log updates
 
-      return () => clearInterval(interval);
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [buildId, token, autoRefresh]); // Remove fetchBuild and state.data from dependencies
 
   return {
