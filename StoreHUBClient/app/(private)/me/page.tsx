@@ -10,7 +10,7 @@ import { Pagination } from "@/components/common/pagination";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAuth } from "@/lib/store";
 import { userApi, ApiError } from "@/lib/api";
-import { MapPin, Link2, Star, Package, AlertTriangle, LogIn } from "lucide-react";
+import { MapPin, Link2, Star, Package, AlertTriangle } from "lucide-react";
 import type { UserProfileResponse } from "@/types";
 
 interface GithubPublicProfile {
@@ -139,23 +139,6 @@ export default function Me() {
                 >
                   Retry
                 </button>
-              }
-            />
-          )}
-
-          {/* No Token State */}
-          {!token && !loading && (
-            <EmptyState
-              icon={LogIn}
-              title="Login Required"
-              description="You need to be logged in to view your profile."
-              action={
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_BASE}/auth/github/login`}
-                  className="inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono font-bold transition-transform hover:scale-105 active:scale-95"
-                >
-                  Login
-                </a>
               }
             />
           )}
