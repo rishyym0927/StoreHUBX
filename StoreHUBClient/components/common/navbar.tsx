@@ -5,6 +5,7 @@ import * as Avatar from "@radix-ui/react-avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/store";
 import { GITHUB_LOGIN_URL } from "@/lib/api";
+import { LogOut } from "lucide-react";
 
 export function Navbar() {
   const { user, token, clear } = useAuth();
@@ -77,10 +78,11 @@ export function Navbar() {
                 {/* Logout */}
                 <button
                   onClick={() => clear()}
-                  className="hidden sm:block text-xs font-mono border-2 border-black dark:border-white px-3 py-1.5 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                  className="flex items-center gap-1.5 text-xs font-mono border-2 border-black dark:border-white px-2 sm:px-3 py-1.5 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
                   title="Sign out"
                 >
-                  Logout
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
             </>
