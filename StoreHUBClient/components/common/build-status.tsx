@@ -52,10 +52,10 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
 
   if (loading && !build) {
     return (
-      <div className="border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm opacity-70">Loading build status...</span>
+      <div className="border border-black dark:border-white p-6">
+        <div className="flex items-center gap-3 font-mono text-sm">
+          <div className="w-4 h-4 border-2 border-black dark:border-white border-t-transparent animate-spin" />
+          <span>Loading build status...</span>
         </div>
       </div>
     );
@@ -63,55 +63,50 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
 
   if (error) {
     return (
-      <div className="border-2 border-red-500/50 bg-red-500/10 rounded-xl p-4">
-        <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
+      <div className="border border-red-600 dark:border-red-400 p-4">
+        <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
       </div>
     );
   }
 
   if (!build) return null;
 
-  const getStatusConfig = (status: string): { label: string; icon: LucideIcon; color: string; bg: string; border: string } => {
+  const getStatusConfig = (status: string): { label: string; icon: LucideIcon; color: string; border: string } => {
     switch (status) {
       case "queued":
         return {
           label: "Queued",
           icon: Clock,
-          color: "text-yellow-700 dark:text-yellow-300",
-          bg: "bg-yellow-50 dark:bg-yellow-900/20",
-          border: "border-yellow-300 dark:border-yellow-700",
+          color: "text-yellow-700 dark:text-yellow-400",
+          border: "border-yellow-600",
         };
       case "running":
         return {
           label: "Building",
           icon: Loader2,
-          color: "text-blue-700 dark:text-blue-300",
-          bg: "bg-blue-50 dark:bg-blue-900/20",
-          border: "border-blue-300 dark:border-blue-700",
+          color: "text-blue-700 dark:text-blue-400",
+          border: "border-blue-600",
         };
       case "success":
         return {
           label: "Success",
           icon: CheckCircle2,
-          color: "text-green-700 dark:text-green-300",
-          bg: "bg-green-50 dark:bg-green-900/20",
-          border: "border-green-300 dark:border-green-700",
+          color: "text-green-700 dark:text-green-400",
+          border: "border-green-600",
         };
       case "error":
         return {
           label: "Failed",
           icon: XCircle,
-          color: "text-red-700 dark:text-red-300",
-          bg: "bg-red-50 dark:bg-red-900/20",
-          border: "border-red-300 dark:border-red-700",
+          color: "text-red-700 dark:text-red-400",
+          border: "border-red-600",
         };
       default:
         return {
           label: status,
           icon: Info,
-          color: "text-gray-700 dark:text-gray-300",
-          bg: "bg-gray-50 dark:bg-gray-900/20",
-          border: "border-gray-300 dark:border-gray-700",
+          color: "text-black dark:text-white",
+          border: "border-black dark:border-white",
         };
     }
   };
@@ -122,21 +117,21 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
   const canRebuild = isCompleted && token;
 
   return (
-    <div className={`border-2 ${statusConfig.border} ${statusConfig.bg} rounded-xl p-6 space-y-4`}>
+    <div className={`border-2 ${statusConfig.border} p-6 space-y-4`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           {isPending && (
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-current border-t-transparent animate-spin" />
           )}
           <div>
             <div className="flex items-center gap-2">
               <statusConfig.icon className={`w-5 h-5 ${statusConfig.color} ${build.status === "running" ? "animate-spin" : ""}`} />
-              <h3 className={`font-semibold ${statusConfig.color}`}>
+              <h3 className={`font-mono font-bold ${statusConfig.color}`}>
                 Build {statusConfig.label}
               </h3>
             </div>
-            <p className="text-xs opacity-70 mt-1">
+            <p className="text-xs font-mono text-black/60 dark:text-white/60 mt-1">
               Build ID: <span className="font-mono">{build.id}</span>
             </p>
           </div>
@@ -146,23 +141,23 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
             <button
               onClick={handleRebuild}
               disabled={rebuilding}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium text-sm transition-colors flex items-center gap-2 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border-2 border-black dark:border-white text-xs font-mono disabled:opacity-50 transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed flex items-center gap-2"
               title="Rebuild this version"
             >
               {rebuilding ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent animate-spin" />
                   <span>Rebuilding...</span>
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   <span>Rebuild</span>
                 </>
               )}
             </button>
           )}
-          <div className="text-right text-sm opacity-70">
+          <div className="text-right text-xs font-mono text-black/60 dark:text-white/60">
             <p>Started {formatRelativeTime(build.createdAt)}</p>
             {build.endedAt && <p>Ended {formatRelativeTime(build.endedAt)}</p>}
           </div>
@@ -171,30 +166,30 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
 
       {/* Rebuild Error Message */}
       {rebuildError && (
-        <div className="border-2 border-red-500/50 bg-red-500/10 rounded-lg p-3">
-          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {rebuildError}</p>
+        <div className="border border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950 p-3">
+          <p className="font-mono text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {rebuildError}</p>
         </div>
       )}
 
       {/* Build Info */}
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="opacity-70 mb-1">Component</p>
-          <p className="font-mono font-medium">{build.component}</p>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="border border-black dark:border-white p-2">
+          <p className="font-mono text-black/60 dark:text-white/60 mb-1">Component</p>
+          <p className="font-mono font-bold">{build.component}</p>
         </div>
-        <div>
-          <p className="opacity-70 mb-1">Version</p>
-          <p className="font-mono font-medium">{build.version}</p>
+        <div className="border border-black dark:border-white p-2">
+          <p className="font-mono text-black/60 dark:text-white/60 mb-1">Version</p>
+          <p className="font-mono font-bold">{build.version}</p>
         </div>
         {build.repo && (
           <>
-            <div>
-              <p className="opacity-70 mb-1">Repository</p>
-              <p className="font-mono text-xs">{build.repo.owner}/{build.repo.repo}</p>
+            <div className="border border-black dark:border-white p-2">
+              <p className="font-mono text-black/60 dark:text-white/60 mb-1">Repository</p>
+              <p className="font-mono font-bold">{build.repo.owner}/{build.repo.repo}</p>
             </div>
-            <div>
-              <p className="opacity-70 mb-1">Branch</p>
-              <p className="font-mono text-xs">{build.repo.ref}</p>
+            <div className="border border-black dark:border-white p-2">
+              <p className="font-mono text-black/60 dark:text-white/60 mb-1">Branch</p>
+              <p className="font-mono font-bold">{build.repo.ref}</p>
             </div>
           </>
         )}
@@ -202,13 +197,13 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
 
       {/* Artifacts */}
       {build.artifacts?.bundleUrl && (
-        <div className="pt-4 border-t">
-          <p className="text-sm font-medium mb-2 flex items-center gap-1.5"><Package className="w-4 h-4" /> Build Artifacts</p>
+        <div className="pt-4 border-t border-black dark:border-white">
+          <p className="text-sm font-mono font-bold mb-2 flex items-center gap-1.5"><Package className="w-4 h-4" /> Build Artifacts</p>
           <a
             href={build.artifacts.bundleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-mono"
+            className="text-xs font-mono hover:underline break-all"
           >
             {build.artifacts.bundleUrl}
           </a>
@@ -217,9 +212,9 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
 
       {/* Logs */}
       {build.logs && build.logs.length > 0 && (
-        <div className="pt-4 border-t">
-          <p className="text-sm font-medium mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4" /> Build Logs</p>
-          <div className="bg-black/5 dark:bg-black/30 rounded-lg p-3 max-h-64 overflow-y-auto">
+        <div className="pt-4 border-t border-black dark:border-white">
+          <p className="text-sm font-mono font-bold mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4" /> Build Logs</p>
+          <div className="bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white p-3 max-h-64 overflow-y-auto">
             <pre className="text-xs font-mono whitespace-pre-wrap">
               {build.logs.join('\n')}
             </pre>
