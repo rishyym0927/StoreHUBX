@@ -4,6 +4,7 @@ import Link from "next/link";
 import * as Avatar from "@radix-ui/react-avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/store";
+import { GITHUB_LOGIN_URL } from "@/lib/api";
 
 export function Navbar() {
   const { user, token, clear } = useAuth();
@@ -89,7 +90,7 @@ export function Navbar() {
               <div className="hidden sm:block w-px h-6 bg-black dark:bg-white opacity-30"></div>
 
               <a
-                href={`${process.env.NEXT_PUBLIC_API_BASE}/auth/github/login`}
+                href={GITHUB_LOGIN_URL}
                 className="brutal-scale text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 sm:px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black inline-flex items-center gap-1.5"
               >
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">

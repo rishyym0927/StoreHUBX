@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/store";
-import { componentApi, userApi } from "@/lib/api";
+import { componentApi, userApi, GITHUB_LOGIN_URL } from "@/lib/api";
 import { ComponentCard } from "@/components/common/component-card";
 import { Sparkles, Star, Palette } from "lucide-react";
 import type { Component, UserProfileResponse } from "@/types";
@@ -153,7 +153,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <a
-                  href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
+                  href={GITHUB_LOGIN_URL}
                   className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -296,7 +296,7 @@ export default function Home() {
               </Link>
             ) : (
               <a
-                href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
+                href={GITHUB_LOGIN_URL}
                 className="brutal-scale inline-block border-2 border-black dark:border-white px-6 py-3 text-sm font-mono bg-black text-white dark:bg-white dark:text-black"
               >
                 Get Started
@@ -337,7 +337,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <a
-                href={process.env.NEXT_PUBLIC_API_BASE + "/auth/github/login"}
+                href={GITHUB_LOGIN_URL}
                 className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

@@ -41,6 +41,14 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 
+if (!process.env.NEXT_PUBLIC_API_BASE) {
+  console.error(
+    "NEXT_PUBLIC_API_BASE is not set — API calls and GitHub login links will be broken. Set it in .env.local."
+  );
+}
+
+export const GITHUB_LOGIN_URL = `${API_BASE}/auth/github/login`;
+
 // ========================================
 // Core API Helper
 // ========================================
