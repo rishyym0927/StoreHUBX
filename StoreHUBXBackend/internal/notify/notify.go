@@ -15,13 +15,13 @@ import (
 
 func insert(ctx context.Context, n models.Notification) {
 	n.CreatedAt = time.Now()
-	col := db.Client.Database("storehub").Collection("notifications")
+	col := db.DB().Collection("notifications")
 	_, _ = col.InsertOne(ctx, n)
 }
 
 // NewVersion notifies everyone following componentID that a new version was published.
 func NewVersion(ctx context.Context, componentID primitive.ObjectID, componentName, versionStr string) {
-	followCol := db.Client.Database("storehub").Collection("follows")
+	followCol := db.DB().Collection("follows")
 	cursor, err := followCol.Find(ctx, bson.M{"targetType": models.FollowTargetComponent, "targetId": componentID.Hex()})
 	if err != nil {
 		return

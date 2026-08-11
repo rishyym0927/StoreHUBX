@@ -13,7 +13,7 @@ func EnsureIndexes(client *mongo.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db := client.Database("storehub")
+	db := client.Database(Name())
 
 	// components: slug unique
 	_, _ = db.Collection("components").Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -67,6 +67,20 @@ func EnsureIndexes(client *mongo.Client) error {
 		{Keys: bson.D{{Key: "component", Value: 1}}},
 		{Keys: bson.D{{Key: "version", Value: 1}}},
 		{Keys: bson.D{{Key: "status", Value: 1}}},
+	})
+
+	// build_plans: one cached plan per repo subpath per dependency set. Path is
+	// part of the key because a single repo can host several components at
+	// different subpaths, and lockfileHash is part of it so a dependency change
+	// re-derives the plan instead of reusing a stale one.
+	_, _ = db.Collection("build_plans").Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "owner", Value: 1},
+			{Key: "repo", Value: 1},
+			{Key: "path", Value: 1},
+			{Key: "lockfileHash", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
 	})
 
 	// collections: list a user's collections

@@ -54,7 +54,7 @@ func AddVersion(c *fiber.Ctx) error {
 		return utils.Error(c, 400, "commit SHA is required")
 	}
 
-	verCol := db.Client.Database("storehub").Collection("component_versions")
+	verCol := db.DB().Collection("component_versions")
 	if existing, ok := existingVersionForCommit(ctx, verCol, comp.ID, version.CommitSHA); ok {
 		return utils.Error(c, 409, fmt.Sprintf("version already exists for commit %s (version: %s)", version.CommitSHA[:7], existing.Version))
 	}
@@ -109,7 +109,7 @@ func GetComponentVersions(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	verCol := db.Client.Database("storehub").Collection("component_versions")
+	verCol := db.DB().Collection("component_versions")
 	cursor, err := verCol.Find(ctx, bson.M{"componentId": comp.ID})
 	if err != nil {
 		return utils.Error(c, 500, "database error")
@@ -176,7 +176,7 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 		return nil, primitive.NilObjectID, &deployError{400, "component is not linked to a repository"}
 	}
 
-	verCol := db.Client.Database("storehub").Collection("component_versions")
+	verCol := db.DB().Collection("component_versions")
 	if existing, ok := existingVersionForCommit(ctx, verCol, comp.ID, commitSHA); ok {
 		return nil, primitive.NilObjectID, &deployError{409, fmt.Sprintf("version already exists for this commit: %s", existing.Version)}
 	}

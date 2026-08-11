@@ -19,6 +19,13 @@ func main() {
 	config.LoadConfig()
 	db.Init(config.AppConfig.MongoURI)
 	defer db.Disconnect()
+
+	// The worker writes build_plans, so it needs its indexes even when it runs
+	// without an API server alongside it (EnsureIndexes is idempotent).
+	if err := db.EnsureIndexes(db.Client); err != nil {
+		log.Println("ensure indexes:", err)
+	}
+
 	cache.Init()
 
 	uploader, err := storage.NewS3Uploader()

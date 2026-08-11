@@ -165,7 +165,7 @@ func GitHubCallback(c *fiber.Ctx) error {
 	// --- 6) Upsert user (use the SAME providerID everywhere) ---
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	col := db.Client.Database("storehub").Collection("users")
+	col := db.DB().Collection("users")
 
 	update := bson.M{
 		"$set": bson.M{

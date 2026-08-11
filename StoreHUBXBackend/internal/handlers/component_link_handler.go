@@ -49,7 +49,7 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 	uid, _ := c.Locals("user_id").(string)
 
 	filter := bson.M{"slug": slug, "ownerId": uid}
@@ -129,7 +129,7 @@ func LinkComponentRepo(c *fiber.Ctx) error {
 	invalidateComponentCaches(ctx, slug)
 
 	// Auto-create the first version (and queue its build) if none exist yet.
-	verCol := db.Client.Database("storehub").Collection("component_versions")
+	verCol := db.DB().Collection("component_versions")
 	count, err := verCol.CountDocuments(ctx, bson.M{"componentId": updated.ID})
 	if err != nil {
 		return utils.Error(c, 500, "failed to check versions")

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rishyym0927/storehubx/internal/buildplan"
 	"github.com/rishyym0927/storehubx/internal/cache"
 	"github.com/rishyym0927/storehubx/internal/db"
 	"github.com/rishyym0927/storehubx/internal/metrics"
@@ -49,7 +50,7 @@ func NewProcessor(uploader storage.Uploader) *Processor {
 }
 
 func (p *Processor) logPush(ctx context.Context, id primitive.ObjectID, msg string) {
-	_, _ = db.Client.Database(os.Getenv("MONGO_DB")).
+	_, _ = db.DB().
 		Collection("build_jobs").
 		UpdateByID(ctx, id, bson.M{"$set": bson.M{"updatedAt": time.Now()}, "$push": bson.M{"logs": msg}})
 }
@@ -59,7 +60,7 @@ func (p *Processor) setStatus(ctx context.Context, id primitive.ObjectID, status
 	for k, v := range extra {
 		set[k] = v
 	}
-	_, _ = db.Client.Database(os.Getenv("MONGO_DB")).
+	_, _ = db.DB().
 		Collection("build_jobs").
 		UpdateByID(ctx, id, bson.M{"$set": set})
 }
@@ -74,7 +75,7 @@ func (p *Processor) claimQueued(ctx context.Context) (*models.BuildJob, error) {
 			{"nextAttemptAt": bson.M{"$lte": now}},
 		},
 	}
-	err := db.Client.Database(os.Getenv("MONGO_DB")).
+	err := db.DB().
 		Collection("build_jobs").
 		FindOneAndUpdate(ctx,
 			filter,
@@ -94,6 +95,13 @@ func (p *Processor) claimQueued(ctx context.Context) (*models.BuildJob, error) {
 // without a fresh stream message) and any job whose XADD was dropped.
 // Without Redis, it falls back entirely to the original fast Mongo poll.
 func (p *Processor) Run(ctx context.Context) {
+	if SandboxAvailable() {
+		fmt.Println("[WORKER] docker sandbox available; builds will run isolated")
+		PrewarmSandbox(ctx)
+	} else {
+		fmt.Println("[WORKER] docker sandbox unavailable; builds will run on the host")
+	}
+
 	go p.heartbeatLoop(ctx)
 
 	if cache.Client != nil {
@@ -117,7 +125,7 @@ func (p *Processor) heartbeatLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-heartbeatTicker.C:
-			count, err := db.Client.Database(os.Getenv("MONGO_DB")).
+			count, err := db.DB().
 				Collection("build_jobs").
 				CountDocuments(ctx, bson.M{"status": models.BuildQueued})
 			if err == nil {
@@ -214,7 +222,7 @@ func (p *Processor) claimSpecific(ctx context.Context, id primitive.ObjectID) (*
 			{"nextAttemptAt": bson.M{"$lte": now}},
 		},
 	}
-	err := db.Client.Database(os.Getenv("MONGO_DB")).
+	err := db.DB().
 		Collection("build_jobs").
 		FindOneAndUpdate(ctx,
 			filter,
@@ -257,13 +265,7 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		return
 	}
 
-	p.logPush(ctx, jobID, "running build (npm) or static fallback...")
-	if err := p.maybeBuildWithNode(ctx, jobID, working); err != nil {
-		p.fail(ctx, job, err)
-		return
-	}
-
-	outDir, err := pickOutputDir(working)
+	outDir, err := p.buildWorkspace(ctx, job, topDir, working)
 	if err != nil {
 		p.fail(ctx, job, err)
 		return
@@ -288,6 +290,7 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 		"artifacts": models.BuildArtifact{BundleURL: bundleURL},
 	})
 	p.logPush(ctx, jobID, "build complete")
+	usedAIPlans.clear(jobID.Hex())
 	metrics.BuildsTotal.WithLabelValues("success").Inc()
 	metrics.BuildDuration.Observe(time.Since(jobStartTime(job)).Seconds())
 	notify.BuildCompleted(ctx, job.OwnerID, job.ComponentID, job.Component, job.Version, true)
@@ -299,6 +302,17 @@ const maxBuildBackoff = 2 * time.Minute
 
 func (p *Processor) fail(ctx context.Context, job *models.BuildJob, err error) {
 	p.logPush(ctx, job.ID, "ERROR: "+err.Error())
+
+	// If this build ran an AI-derived plan, drop the cached entry so the retry
+	// re-derives instead of replaying the same wrong guess. Sandbox failures
+	// are excluded: those say nothing about whether the plan was correct.
+	if key, ok := usedAIPlans.take(job.ID.Hex()); ok && !IsSandboxError(err) {
+		if invErr := buildplan.InvalidatePlan(ctx, key.owner, key.repo, key.path, key.hash); invErr != nil {
+			p.logPush(ctx, job.ID, fmt.Sprintf("[PLAN] warning: could not invalidate cached plan: %v", invErr))
+		} else {
+			p.logPush(ctx, job.ID, "[PLAN] invalidated cached AI plan; retry will re-derive")
+		}
+	}
 
 	maxAttempts := job.MaxAttempts
 	if maxAttempts <= 0 {

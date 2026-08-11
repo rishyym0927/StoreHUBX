@@ -41,7 +41,7 @@ func invalidateComponentCaches(ctx context.Context, slug string) {
 // findComponentBySlug fetches a component by its slug.
 func findComponentBySlug(ctx context.Context, slug string) (models.Component, error) {
 	var comp models.Component
-	err := db.Client.Database("storehub").Collection("components").
+	err := db.DB().Collection("components").
 		FindOne(ctx, bson.M{"slug": slug}).Decode(&comp)
 	return comp, err
 }
@@ -71,7 +71,7 @@ func CreateComponent(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 
 	baseSlug := strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
 	body.Slug = baseSlug
@@ -102,7 +102,7 @@ func GetAllComponents(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 
 	// Pagination
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -211,7 +211,7 @@ func GetComponent(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 
 	uid, _ := c.Locals("user_id").(string)
 
@@ -257,7 +257,7 @@ func GetComponent(c *fiber.Ctx) error {
 	}
 
 	if uid != "" {
-		interactionCol := db.Client.Database("storehub").Collection("interactions")
+		interactionCol := db.DB().Collection("interactions")
 		count, _ := interactionCol.CountDocuments(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionLike})
 		comp.LikedByMe = count > 0
 	}
@@ -311,7 +311,7 @@ func DeleteComponent(c *fiber.Ctx) error {
 		return utils.Error(c, 403, "only the owner can delete this component")
 	}
 
-	database := db.Client.Database("storehub")
+	database := db.DB()
 	if _, err := database.Collection("component_versions").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
 		return utils.Error(c, 500, "failed to delete component versions")
 	}
@@ -363,8 +363,8 @@ func ToggleLikeComponent(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	col := db.Client.Database("storehub").Collection("components")
-	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	col := db.DB().Collection("components")
+	interactionCol := db.DB().Collection("interactions")
 
 	// Insert a like first — the partial unique index on {componentId,
 	// userId, type} rejects a second insert with a duplicate-key error,

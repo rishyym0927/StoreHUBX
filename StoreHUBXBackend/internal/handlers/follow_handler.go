@@ -42,7 +42,7 @@ func CreateFollow(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	followCol := db.Client.Database("storehub").Collection("follows")
+	followCol := db.DB().Collection("follows")
 	_, err := followCol.InsertOne(ctx, models.Follow{
 		FollowerID: uid,
 		TargetType: models.FollowTargetType(payload.TargetType),
@@ -74,7 +74,7 @@ func DeleteFollow(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	followCol := db.Client.Database("storehub").Collection("follows")
+	followCol := db.DB().Collection("follows")
 	res, err := followCol.DeleteOne(ctx, bson.M{
 		"followerId": uid,
 		"targetType": payload.TargetType,

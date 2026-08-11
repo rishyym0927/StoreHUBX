@@ -45,7 +45,7 @@ func enqueueBuildJob(ctx context.Context, comp *models.Component, versionID prim
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
+	jobCol := db.DB().Collection("build_jobs")
 	res, err := jobCol.InsertOne(ctx, job)
 	if err != nil {
 		return primitive.NilObjectID, err
@@ -74,7 +74,7 @@ func EnqueueBuild(c *fiber.Ctx) error {
 		return utils.Error(c, 400, "component is not linked to a GitHub repo")
 	}
 
-	verCol := db.Client.Database("storehub").Collection("component_versions")
+	verCol := db.DB().Collection("component_versions")
 	var ver models.ComponentVersion
 	if err := verCol.FindOne(ctx, bson.M{"componentId": comp.ID, "version": versionStr}).Decode(&ver); err != nil {
 		return utils.Error(c, 404, "version not found")
@@ -123,7 +123,7 @@ func GetBuild(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
+	jobCol := db.DB().Collection("build_jobs")
 	var job models.BuildJob
 	if err := jobCol.FindOne(ctx, bson.M{"_id": oid}).Decode(&job); err != nil {
 		return utils.Error(c, 404, "build not found")
@@ -143,7 +143,7 @@ func ListBuildsForVersion(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
+	jobCol := db.DB().Collection("build_jobs")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest (latest attempt) first
 	cur, err := jobCol.Find(ctx, bson.M{"component": slug, "version": versionStr}, opts)
 	if err != nil {

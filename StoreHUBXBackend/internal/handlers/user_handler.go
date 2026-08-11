@@ -15,7 +15,7 @@ import (
 // buildProfileResponse fetches a user and their visible components. A
 // private component only shows up for the owner or a listed collaborator.
 func buildProfileResponse(ctx context.Context, ownerID, viewerID string) (fiber.Map, error) {
-	userCol := db.Client.Database("storehub").Collection("users")
+	userCol := db.DB().Collection("users")
 	var user models.User
 	if err := userCol.FindOne(ctx, bson.M{"providerId": ownerID}).Decode(&user); err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func buildProfileResponse(ctx context.Context, ownerID, viewerID string) (fiber.
 		}
 	}
 
-	componentCol := db.Client.Database("storehub").Collection("components")
+	componentCol := db.DB().Collection("components")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	cursor, err := componentCol.Find(ctx, filter, opts)
 	if err != nil {

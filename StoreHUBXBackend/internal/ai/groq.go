@@ -49,11 +49,18 @@ type chatMessage struct {
 	Content string `json:"content"`
 }
 
+// responseFormat opts a request into Groq's JSON mode, which constrains the
+// model to emit a syntactically valid JSON object.
+type responseFormat struct {
+	Type string `json:"type"`
+}
+
 type chatRequest struct {
-	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
-	Temperature float64       `json:"temperature"`
+	Model          string          `json:"model"`
+	Messages       []chatMessage   `json:"messages"`
+	MaxTokens      int             `json:"max_tokens,omitempty"`
+	Temperature    float64         `json:"temperature"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
 }
 
 type chatResponse struct {
@@ -63,12 +70,23 @@ type chatResponse struct {
 }
 
 func chatCompletion(ctx context.Context, systemPrompt, userPrompt string, maxTokens int) (string, error) {
+	return chatCompletionOpts(ctx, systemPrompt, userPrompt, maxTokens, false)
+}
+
+// chatCompletionJSON is chatCompletion with JSON mode enabled. Used where the
+// response feeds machinery rather than prose, so a malformed reply should fail
+// outright instead of being loosely string-parsed.
+func chatCompletionJSON(ctx context.Context, systemPrompt, userPrompt string, maxTokens int) (string, error) {
+	return chatCompletionOpts(ctx, systemPrompt, userPrompt, maxTokens, true)
+}
+
+func chatCompletionOpts(ctx context.Context, systemPrompt, userPrompt string, maxTokens int, jsonMode bool) (string, error) {
 	apiKey := os.Getenv("GROQ_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("GROQ_API_KEY not set")
 	}
 
-	reqBody, err := json.Marshal(chatRequest{
+	payload := chatRequest{
 		Model: groqModel(),
 		Messages: []chatMessage{
 			{Role: "system", Content: systemPrompt},
@@ -76,7 +94,12 @@ func chatCompletion(ctx context.Context, systemPrompt, userPrompt string, maxTok
 		},
 		MaxTokens:   maxTokens,
 		Temperature: 0.3,
-	})
+	}
+	if jsonMode {
+		payload.ResponseFormat = &responseFormat{Type: "json_object"}
+	}
+
+	reqBody, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}

@@ -30,7 +30,7 @@ func UpdateVisibility(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 	res, err := col.UpdateOne(ctx,
 		bson.M{"slug": slug, "ownerId": uid},
 		bson.M{"$set": bson.M{"visibility": payload.Visibility, "updatedAt": time.Now()}},
@@ -64,9 +64,9 @@ func AddCollaborator(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 
-	userCol := db.Client.Database("storehub").Collection("users")
+	userCol := db.DB().Collection("users")
 	if err := userCol.FindOne(ctx, bson.M{"providerId": payload.UserID}).Err(); err != nil {
 		return utils.Error(c, 404, "user not found")
 	}
@@ -98,7 +98,7 @@ func RemoveCollaborator(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	col := db.Client.Database("storehub").Collection("components")
+	col := db.DB().Collection("components")
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 	var updated models.Component
 	err := col.FindOneAndUpdate(ctx,

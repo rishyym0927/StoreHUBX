@@ -47,7 +47,7 @@ func toRatingView(i models.Interaction) ratingView {
 // recalculateRatingStats aggregates all ratings for a component and writes
 // the denormalized averageRating/ratingCount back onto the component doc.
 func recalculateRatingStats(ctx context.Context, componentID primitive.ObjectID) error {
-	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	interactionCol := db.DB().Collection("interactions")
 
 	pipeline := []bson.M{
 		{"$match": bson.M{"componentId": componentID, "type": models.InteractionRating}},
@@ -74,7 +74,7 @@ func recalculateRatingStats(ctx context.Context, componentID primitive.ObjectID)
 		}
 	}
 
-	compCol := db.Client.Database("storehub").Collection("components")
+	compCol := db.DB().Collection("components")
 	_, err = compCol.UpdateOne(ctx, bson.M{"_id": componentID}, bson.M{
 		"$set": bson.M{"averageRating": result.Avg, "ratingCount": result.Count},
 	})
@@ -105,13 +105,13 @@ func UpsertRating(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	userCol := db.Client.Database("storehub").Collection("users")
+	userCol := db.DB().Collection("users")
 	var author models.User
 	if err := userCol.FindOne(ctx, bson.M{"providerId": uid}).Decode(&author); err != nil {
 		return utils.Error(c, 404, "user not found")
 	}
 
-	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	interactionCol := db.DB().Collection("interactions")
 	now := time.Now()
 	filter := bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionRating}
 	update := bson.M{
@@ -163,7 +163,7 @@ func ListRatings(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	interactionCol := db.DB().Collection("interactions")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	cursor, err := interactionCol.Find(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionRating}, opts)
 	if err != nil {
@@ -204,7 +204,7 @@ func DeleteRating(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "component not found")
 	}
 
-	interactionCol := db.Client.Database("storehub").Collection("interactions")
+	interactionCol := db.DB().Collection("interactions")
 	res, err := interactionCol.DeleteOne(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionRating})
 	if err != nil {
 		return utils.Error(c, 500, "failed to delete rating")

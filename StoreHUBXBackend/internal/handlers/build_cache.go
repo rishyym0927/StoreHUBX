@@ -19,7 +19,7 @@ func findCachedBuild(ctx context.Context, componentID primitive.ObjectID, commit
 		return nil, false
 	}
 
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
+	jobCol := db.DB().Collection("build_jobs")
 	opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	var cached models.BuildJob
 	err := jobCol.FindOne(ctx, bson.M{
@@ -53,6 +53,6 @@ func reuseCachedBuild(ctx context.Context, cached *models.BuildJob, componentID,
 		StartedAt:   &now,
 		EndedAt:     &now,
 	}
-	jobCol := db.Client.Database("storehub").Collection("build_jobs")
+	jobCol := db.DB().Collection("build_jobs")
 	_, _ = jobCol.InsertOne(ctx, job)
 }

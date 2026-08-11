@@ -119,7 +119,7 @@ func GetWebhookConfig(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	compCol := db.Client.Database("storehub").Collection("components")
+	compCol := db.DB().Collection("components")
 	var comp models.Component
 	if err := compCol.FindOne(ctx, bson.M{"slug": slug, "ownerId": uid}).Decode(&comp); err != nil {
 		return utils.Error(c, 404, "component not found or unauthorized")

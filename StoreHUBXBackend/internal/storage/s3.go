@@ -82,11 +82,16 @@ func NewS3Uploader() (*S3Uploader, error) {
 	return u, nil
 }
 
-// PublishComponentFromDist rewrites index.html asset references to local assets/* paths,
-// uploads dist/assets/* -> components/<component>/<version>/assets/*,
-// uploads root dist files to components/<component>/<version>/,
-// uploads rewritten index.html to components/<component>/<version>/index.html
-// Returns public URL to the uploaded index.html.
+// PublishComponentFromDist mirrors the entire build output directory to
+// components/<component>/<version>/<relpath>, preserving the tree structure,
+// and uploads a rewritten index.html at that prefix's root. Returns the public
+// URL of the uploaded index.html.
+//
+// The tree is mirrored faithfully rather than special-casing an "assets/"
+// directory: build tools each pick their own bundle directory name (Vite
+// "assets/", CRA "static/", Astro "_astro/", SvelteKit "_app/", Gatsby
+// "page-data/", Angular "media/"), so anything less than a full mirror
+// silently drops the bundle for most frameworks and publishes a blank preview.
 func (u *S3Uploader) PublishComponentFromDist(ctx context.Context, component, version, distDir string) (string, error) {
 	// validate dist dir
 	info, err := os.Stat(distDir)
@@ -104,79 +109,41 @@ func (u *S3Uploader) PublishComponentFromDist(ctx context.Context, component, ve
 		return "", fmt.Errorf("failed to read index.html from dist: %w", err)
 	}
 
-	// rewrite index.html (make assets references relative to index)
-	rewrittenIndex, changed, err := rewriteIndexHTMLPaths(indexBytes, distDir)
+	// rewrite index.html so root-absolute references resolve under the
+	// components/<component>/<version>/ prefix this bundle is served from
+	rewrittenIndex, err := rewriteIndexHTMLPaths(indexBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to rewrite index.html: %w", err)
 	}
-	if changed {
-		// ensure we have a doctype
-		rewrittenIndex = ensureHTMLDoctype(rewrittenIndex)
-	}
 
-	// Upload assets recursively if exists
-	assetsLocal := filepath.Join(distDir, "assets")
-	if stat, err := os.Stat(assetsLocal); err == nil && stat.IsDir() {
-		err = filepath.WalkDir(assetsLocal, func(p string, d fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if d.IsDir() {
-				return nil
-			}
-			rel, err := filepath.Rel(assetsLocal, p)
-			if err != nil {
-				return err
-			}
-			key := path.Join("components", component, version, "assets", filepath.ToSlash(rel))
-			ct := detectContentTypeFromExt(p)
-			// FPutObject streams file from disk
-			if _, err := u.client.FPutObject(ctx, u.bucket, key, p, minio.PutObjectOptions{ContentType: ct}); err != nil {
-				return fmt.Errorf("upload asset failed %s -> %s: %w", p, key, err)
-			}
-			// best-effort ensure content-type
-			_ = u.UpdateObjectContentType(ctx, key, ct)
-			return nil
-		})
-		if err != nil {
-			return "", fmt.Errorf("error uploading assets: %w", err)
-		}
-	}
-
-	// Upload top-level files (root of dist), excluding index.html and assets dir
+	// Mirror every file in the tree, preserving relative paths. index.html is
+	// uploaded separately below from its rewritten bytes.
 	err = filepath.WalkDir(distDir, func(p string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
-			// skip assets dir contents (already handled)
-			if filepath.Clean(p) == filepath.Clean(assetsLocal) {
-				return filepath.SkipDir
-			}
 			return nil
 		}
 		rel, err := filepath.Rel(distDir, p)
 		if err != nil {
 			return err
 		}
-		// skip nested things (we only want top-level root files besides assets)
-		if strings.Contains(rel, string(os.PathSeparator)) {
-			// already handled in assets or deeper; skip
-			return nil
-		}
 		if rel == "index.html" {
 			return nil
 		}
 		key := path.Join("components", component, version, filepath.ToSlash(rel))
 		ct := detectContentTypeFromExt(p)
+		// FPutObject streams file from disk
 		if _, err := u.client.FPutObject(ctx, u.bucket, key, p, minio.PutObjectOptions{ContentType: ct}); err != nil {
-			return fmt.Errorf("upload root file failed %s -> %s: %w", p, key, err)
+			return fmt.Errorf("upload failed %s -> %s: %w", p, key, err)
 		}
+		// best-effort ensure content-type
 		_ = u.UpdateObjectContentType(ctx, key, ct)
 		return nil
 	})
 	if err != nil {
-		return "", fmt.Errorf("error uploading root files: %w", err)
+		return "", fmt.Errorf("error uploading build output: %w", err)
 	}
 
 	// Upload rewritten index.html
@@ -189,140 +156,75 @@ func (u *S3Uploader) PublishComponentFromDist(ctx context.Context, component, ve
 	return u.publicURL(keyIndex), nil
 }
 
-// rewriteIndexHTMLPaths parses HTML and converts asset references so they point to local assets/ or root files present in distDir.
-// It returns the rewritten bytes, whether a change occurred, and error.
-func rewriteIndexHTMLPaths(indexBytes []byte, distDir string) ([]byte, bool, error) {
+// rewriteIndexHTMLPaths makes an index.html safe to serve from a nested
+// prefix. Because PublishComponentFromDist mirrors the build tree verbatim,
+// relative references already resolve correctly and are left untouched; the
+// only things that break are references anchored to the domain root, since
+// the bundle is served from components/<component>/<version>/ rather than "/".
+//
+// Two rewrites are applied:
+//   - root-absolute src/href/srcset values ("/assets/x.js") become relative
+//     ("assets/x.js")
+//   - a root-absolute <base href="/"> becomes "./" — Angular and friends emit
+//     this, and left alone it re-anchors every relative reference on the page
+//     back to the domain root, breaking the preview regardless of the above.
+//
+// External (http://, https://, //host) and non-path references (data:, blob:,
+// mailto:, #fragment) are never touched.
+func rewriteIndexHTMLPaths(indexBytes []byte) ([]byte, error) {
 	doc, err := html.Parse(bytes.NewReader(indexBytes))
 	if err != nil {
-		return nil, false, err
-	}
-	changed := false
-
-	// helper to rewrite a single URL value; keeps suffix (?.. or #..)
-	rewriteOne := func(orig string) string {
-		val := orig
-		// preserve whitespace
-		val = strings.TrimSpace(val)
-		if val == "" {
-			return orig
-		}
-
-		// ignore protocol-relative and absolute external URLs except when they contain /assets/
-		isExternal := strings.HasPrefix(val, "http://") || strings.HasPrefix(val, "https://") || strings.HasPrefix(val, "//")
-
-		// separate query/hash suffix
-		suffix := ""
-		if idx := strings.IndexAny(val, "?#"); idx >= 0 {
-			suffix = val[idx:]
-			val = val[:idx]
-		}
-
-		// If external and contains /assets/, try to extract path after /assets/
-		if isExternal {
-			if strings.Contains(val, "/assets/") {
-				parts := strings.SplitN(val, "/assets/", 2)
-				if len(parts) == 2 {
-					assetPath := parts[1]
-					localPath := filepath.Join(distDir, "assets", filepath.FromSlash(assetPath))
-					if _, err := os.Stat(localPath); err == nil {
-						return path.Join("assets", filepath.ToSlash(assetPath)) + suffix
-					}
-				}
-			}
-			// otherwise do not rewrite external URLs
-			return orig
-		}
-
-		// remove leading slash so "/assets/foo" -> "assets/foo"
-		clean := strings.TrimPrefix(val, "/")
-
-		// Try: assets subpath (preserve subfolders)
-		if idx := strings.Index(clean, "assets/"); idx >= 0 {
-			rel := strings.TrimPrefix(clean[idx+len("assets/"):], "/")
-			localPath := filepath.Join(distDir, "assets", filepath.FromSlash(rel))
-			if _, err := os.Stat(localPath); err == nil {
-				return path.Join("assets", filepath.ToSlash(rel)) + suffix
-			}
-			// if the file doesn't exist with that subpath, fallthrough to other tries
-		}
-
-		// Build candidate try paths (assets/<path>, assets/<basename>, root/<path>)
-		tryPaths := []string{}
-		if strings.Contains(clean, "/") {
-			tryPaths = append(tryPaths, filepath.Join(distDir, "assets", filepath.FromSlash(clean)))
-		}
-		tryPaths = append(tryPaths, filepath.Join(distDir, "assets", filepath.Base(clean)))
-		tryPaths = append(tryPaths, filepath.Join(distDir, filepath.FromSlash(clean)))
-
-		for _, tp := range tryPaths {
-			if _, err := os.Stat(tp); err == nil {
-				if strings.HasPrefix(tp, filepath.Join(distDir, "assets")) {
-					relp, _ := filepath.Rel(filepath.Join(distDir, "assets"), tp)
-					return path.Join("assets", filepath.ToSlash(relp)) + suffix
-				}
-				// root file
-				relp := filepath.Base(tp)
-				return relp + suffix
-			}
-		}
-
-		// If nothing matched, but original started with "/assets/" or "assets/" try basename
-		if strings.HasPrefix(val, "/assets/") || strings.HasPrefix(val, "assets/") {
-			base := filepath.Base(val)
-			if _, err := os.Stat(filepath.Join(distDir, "assets", base)); err == nil {
-				return path.Join("assets", filepath.ToSlash(base)) + suffix
-			}
-		}
-
-		// no change
-		return orig
+		return nil, err
 	}
 
-	// walker that also rewrites srcset attributes
+	// relativize turns a single root-absolute URL into a relative one,
+	// preserving any ?query or #hash suffix. Anything else is returned as-is.
+	relativize := func(orig string) string {
+		val := strings.TrimSpace(orig)
+		// "//host/path" is protocol-relative (external), not root-absolute
+		if !strings.HasPrefix(val, "/") || strings.HasPrefix(val, "//") {
+			return orig
+		}
+		return strings.TrimPrefix(val, "/")
+	}
+
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
+			isBase := strings.EqualFold(n.Data, "base")
 			for i := range n.Attr {
 				attr := &n.Attr[i]
 				key := strings.ToLower(attr.Key)
-				if key != "src" && key != "href" && key != "srcset" {
-					continue
-				}
-				orig := attr.Val
-				if key == "srcset" {
-					// srcset contains multiple comma-separated items: "url1 1x, url2 2x"
-					parts := strings.Split(attr.Val, ",")
-					changedAny := false
-					for j, p := range parts {
-						p = strings.TrimSpace(p)
-						if p == "" {
-							continue
-						}
-						// each part can be "url" or "url descriptor"
-						subparts := strings.Fields(p)
-						urlPart := subparts[0]
-						newURL := rewriteOne(urlPart)
-						if newURL != urlPart {
-							subparts[0] = newURL
-							parts[j] = strings.Join(subparts, " ")
-							changedAny = true
-						}
-					}
-					if changedAny {
-						newVal := strings.Join(parts, ", ")
-						if newVal != attr.Val {
-							attr.Val = newVal
-							changed = true
-						}
+
+				// <base href="/"> -> "./" so relative refs stay within this prefix
+				if isBase && key == "href" {
+					if v := strings.TrimSpace(attr.Val); strings.HasPrefix(v, "/") && !strings.HasPrefix(v, "//") {
+						attr.Val = "./"
 					}
 					continue
 				}
 
-				newVal := rewriteOne(attr.Val)
-				if newVal != orig {
-					attr.Val = newVal
-					changed = true
+				if key != "src" && key != "href" && key != "srcset" {
+					continue
 				}
+
+				if key == "srcset" {
+					// srcset is comma-separated "url [descriptor]" entries
+					parts := strings.Split(attr.Val, ",")
+					for j, p := range parts {
+						trimmed := strings.TrimSpace(p)
+						if trimmed == "" {
+							continue
+						}
+						fields := strings.Fields(trimmed)
+						fields[0] = relativize(fields[0])
+						parts[j] = strings.Join(fields, " ")
+					}
+					attr.Val = strings.Join(parts, ", ")
+					continue
+				}
+
+				attr.Val = relativize(attr.Val)
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -331,14 +233,11 @@ func rewriteIndexHTMLPaths(indexBytes []byte, distDir string) ([]byte, bool, err
 	}
 	walk(doc)
 
-	if !changed {
-		return indexBytes, false, nil
-	}
 	var buf bytes.Buffer
 	if err := html.Render(&buf, doc); err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	return ensureHTMLDoctype(buf.Bytes()), true, nil
+	return ensureHTMLDoctype(buf.Bytes()), nil
 }
 
 // detectContentTypeFromExt returns a content-type string for known extensions or uses mime.TypeByExtension fallback.

@@ -17,7 +17,7 @@ import (
 func fetchUserDecryptedToken(ctx context.Context, ownerID string) (string, error) {
 	// ownerID == ProviderID (from JWT/user_id)
 	var user models.User
-	if err := db.Client.Database(os.Getenv("MONGO_DB")).
+	if err := db.DB().
 		Collection("users").
 		FindOne(ctx, bson.M{"providerId": ownerID}).Decode(&user); err != nil {
 		return "", fmt.Errorf("user not found for ownerID %s: %w", ownerID, err)
