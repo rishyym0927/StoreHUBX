@@ -40,7 +40,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
       const mine = data.ratings?.find((r) => r.userId === user?.providerId);
       if (mine) {
         setScore(mine.score);
-        setReview(mine.review);
+        setReview(mine.review ?? "");
       }
     } catch (error) {
       console.error("Failed to load ratings:", error);
