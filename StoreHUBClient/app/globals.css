@@ -3,13 +3,18 @@
 /* Tailwind v4: class-based dark mode variant */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Theme tokens - Black & White Design System */
+/* Theme tokens - Black & Beige Design System */
 @theme {
-  --color-bg:        255 255 255;  /* pure white */
+  --color-bg:        245 241 232;  /* warm paper beige */
   --color-bg-dark:   0 0 0;        /* pure black */
   --color-fg:        0 0 0;        /* pure black */
   --color-fg-dark:   255 255 255;  /* pure white */
   --radius-xl:       0;            /* sharp corners for brutalist design */
+
+  /* Override Tailwind's built-in "white" so every bg-white/border-white/
+     text-white utility across the app (brutalist borders included) picks
+     up the warm paper tone in light mode without touching each component. */
+  --color-white:     #F5F1E8;
 }
 
 :root { 
@@ -33,7 +38,7 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: white;
+  background: #F5F1E8;
   border: 1px solid black;
 }
 
@@ -63,7 +68,7 @@ html, body {
 /* Selection styling */
 ::selection {
   background: black;
-  color: white;
+  color: #F5F1E8;
 }
 
 .dark ::selection {
