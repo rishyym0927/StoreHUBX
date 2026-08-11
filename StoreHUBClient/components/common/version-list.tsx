@@ -6,6 +6,7 @@ import { PreviewIframe } from "@/components/common/preview-iframe";
 import { Markdown } from "@/components/common/markdown";
 import { VersionBuilds } from "@/components/common/version-builds";
 import { previewApi } from "@/lib/api";
+import { formatDate } from "@/lib/api-utils";
 
 export type VersionDoc = {
   version: string;
@@ -16,17 +17,6 @@ export type VersionDoc = {
   commitSha?: string;
   createdAt: string;
 };
-
-function toISODate(dateStr?: string) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString('en-GB', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
-  });
-}
 
 // Main component that shows latest version with a selector for other versions
 export function VersionsDisplay({
@@ -148,7 +138,7 @@ export function VersionsList({
                 )}
               </div>
               <span className="text-xs sm:text-sm font-mono text-black/60 dark:text-white/60 whitespace-nowrap" suppressHydrationWarning>
-                {toISODate(v.createdAt)}
+                {v.createdAt ? formatDate(v.createdAt) : ""}
               </span>
             </div>
 

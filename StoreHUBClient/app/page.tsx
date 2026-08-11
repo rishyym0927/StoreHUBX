@@ -54,7 +54,6 @@ export default function Home() {
     (async () => {
       try {
         const res = await componentApi.list({ limit: 12, page: 1 });
-        console.log("Fetched components:", res);
 
         // Get the components array from the response
         const componentsArray = res.components || [];

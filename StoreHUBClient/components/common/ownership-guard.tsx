@@ -18,8 +18,15 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
   const [component, setComponent] = useState<Component | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
     async function checkOwnership() {
       if (!user || !token) {
         router.push(`/components/${slug}`);
@@ -51,9 +58,9 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
     }
 
     checkOwnership();
-  }, [slug, user, token, router]);
+  }, [hydrated, slug, user, token, router]);
 
-  if (loading) {
+  if (!hydrated || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
