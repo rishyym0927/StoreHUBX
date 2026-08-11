@@ -55,6 +55,7 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Components (writes)
 	api.Post("/components", handlers.CreateComponent)
+	api.Delete("/components/:slug", handlers.DeleteComponent)
 	api.Post("/components/:slug/versions", handlers.AddVersion)
 
 	// Social
@@ -109,4 +110,5 @@ func RegisterRoutes(app *fiber.App) {
 	gh.Get("/repos", githubapi.ListUserRepos)
 	gh.Get("/contents", githubapi.GetRepoContents)
 	gh.Get("/branches", githubapi.GetBranch)
+	gh.Get("/autofill", handlers.AutofillFromRepo)
 }

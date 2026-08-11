@@ -221,6 +221,24 @@ export interface GitHubReadme {
   content: string;
 }
 
+// Repo autofill (plan/repo-autofill.md) — prefill of the new-component form
+// from a linked GitHub repo. description/tags may come from an AI (Groq)
+// fallback when GitHub's own data is missing/sparse — descriptionSource and
+// tagsSource say which ("github" | "ai") so the UI can flag it for review.
+// Every field stays editable regardless of source.
+export type AutofillSource = "github" | "ai";
+
+export interface GitHubAutofill {
+  name: string;
+  description: string;
+  descriptionSource: AutofillSource;
+  license: string;
+  tags: string[];
+  tagsSource: AutofillSource;
+  frameworks: string[];
+  readme: string;
+}
+
 // ========================================
 // API Request/Response Types
 // ========================================
@@ -423,6 +441,13 @@ export interface GitHubLatestCommitQueryParams {
 export interface GitHubReadmeQueryParams {
   owner: string;
   repo: string;
+  ref?: string;
+}
+
+export interface GitHubAutofillQueryParams {
+  owner: string;
+  repo: string;
+  path?: string;
   ref?: string;
 }
 

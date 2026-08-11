@@ -208,13 +208,17 @@ func GitHubCallback(c *fiber.Ctx) error {
 		frontendURL = "http://localhost:3000"
 	}
 
-	// Create a user data object to pass along with the token
+	// Create a user data object to pass along with the token. "id" is the
+	// providerId (same value as JWT's user_id claim and Component.OwnerID) —
+	// every ownership check in the frontend (isOwner, currentUserId) compares
+	// against this, not the Mongo _id, so it must match here.
 	userData, err := json.Marshal(map[string]interface{}{
-		"name":      name,
-		"email":     email,
-		"username":  login,
-		"avatarUrl": avatar,
-		
+		"id":         providerID,
+		"providerId": providerID,
+		"name":       name,
+		"email":      email,
+		"username":   login,
+		"avatarUrl":  avatar,
 	})
 	if err != nil {
 		return utils.Error(c, 500, "failed to marshal user data: "+err.Error())

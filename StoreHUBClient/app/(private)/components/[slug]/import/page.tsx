@@ -5,9 +5,14 @@ import { Search, Folder, Link2 } from "lucide-react";
 
 export default async function ImportFromGitHub({
   params,
-}: { params: Promise<{ slug: string }> }) {
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ owner?: string; repo?: string; ref?: string }>;
+}) {
   const { slug } = await params;
-  
+  const { owner, repo, ref } = await searchParams;
+
   return (
     <ProtectedRoute>
       <div className="space-y-12 pb-12">
@@ -56,7 +61,7 @@ export default async function ImportFromGitHub({
 
         {/* Main Browser Component */}
         <section className="border-2 border-black dark:border-white p-6 md:p-8">
-          <GithubBrowser slug={slug} />
+          <GithubBrowser slug={slug} initialOwner={owner} initialRepo={repo} initialRef={ref} />
         </section>
       </div>
     </ProtectedRoute>

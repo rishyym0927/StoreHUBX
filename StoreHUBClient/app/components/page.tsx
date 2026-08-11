@@ -204,6 +204,7 @@ export default function ComponentsPage() {
                     component={c}
                     showOwnerActions={true}
                     currentUserId={loggedInUserId}
+                    onDeleted={() => refetch()}
                   />
                 </div>
               ))}

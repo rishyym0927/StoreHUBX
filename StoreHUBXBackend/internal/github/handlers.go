@@ -460,16 +460,10 @@ func GetContributors(c *fiber.Ctx) error {
 	return c.SendString(fmt.Sprintf(`{"success":true,"data":%s}`, string(body)))
 }
 
-// GET /api/github/readme?owner=&repo=&ref=
-// Decoded README markdown content for the detail-page README tab — item 44.
-func GetReadme(c *fiber.Ctx) error {
-	owner := c.Query("owner")
-	repo := c.Query("repo")
-	ref := c.Query("ref")
-	if owner == "" || repo == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "owner and repo are required"})
-	}
-
+// FetchReadmeContent fetches (and caches) the decoded README markdown for
+// owner/repo@ref. Exported so the autofill flow (internal/handlers) can reuse
+// it instead of duplicating the base64-decode logic in GetReadme.
+func FetchReadmeContent(owner, repo, ref string) (string, error) {
 	cacheKey := githubRepoCacheKey("readme:"+ref, owner, repo)
 	body, status, err := cachedGitHubFetch(cacheKey, githubMetaCacheTTL, func() ([]byte, int, error) {
 		endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/readme", url.PathEscape(owner), url.PathEscape(repo))
@@ -500,11 +494,126 @@ func GetReadme(c *fiber.Ctx) error {
 		return out, status, err
 	})
 	if err != nil {
-		return c.Status(502).JSON(fiber.Map{"error": "GitHub request failed: " + err.Error()})
+		return "", err
 	}
 	if status < 200 || status >= 300 {
-		return githubErrorResponse(c, status, body)
+		return "", fmt.Errorf("github readme request failed (status %d)", status)
 	}
-	c.Set("Content-Type", "application/json")
-	return c.SendString(fmt.Sprintf(`{"success":true,"data":%s}`, string(body)))
+	var parsed struct {
+		Content string `json:"content"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", err
+	}
+	return parsed.Content, nil
+}
+
+// GET /api/github/readme?owner=&repo=&ref=
+// Decoded README markdown content for the detail-page README tab — item 44.
+func GetReadme(c *fiber.Ctx) error {
+	owner := c.Query("owner")
+	repo := c.Query("repo")
+	ref := c.Query("ref")
+	if owner == "" || repo == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "owner and repo are required"})
+	}
+
+	content, err := FetchReadmeContent(owner, repo, ref)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": "GitHub request failed: " + err.Error()})
+	}
+	return c.JSON(fiber.Map{"success": true, "data": fiber.Map{"content": content}})
+}
+
+// PackageJSON is a trimmed view of a repo's package.json — just enough to
+// detect frameworks (repo autofill).
+type PackageJSON struct {
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
+}
+
+// frameworkDeps maps a package.json dependency name to the framework tag it
+// implies. DetectFrameworks dedupes across dependencies/devDependencies.
+var frameworkDeps = map[string]string{
+	"react":         "react",
+	"vue":           "vue",
+	"svelte":        "svelte",
+	"@angular/core": "angular",
+	"solid-js":      "solid",
+	"preact":        "preact",
+	"next":          "nextjs",
+	"nuxt":          "nuxt",
+}
+
+// DetectFrameworks returns the deduplicated set of frameworks implied by a
+// package.json's dependencies/devDependencies, using frameworkDeps.
+func DetectFrameworks(pkg *PackageJSON) []string {
+	if pkg == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	check := func(deps map[string]string) {
+		for dep, name := range frameworkDeps {
+			if _, ok := deps[dep]; ok && !seen[name] {
+				seen[name] = true
+				out = append(out, name)
+			}
+		}
+	}
+	check(pkg.Dependencies)
+	check(pkg.DevDependencies)
+	return out
+}
+
+// FetchPackageJSON fetches and decodes package.json at path/ref in
+// owner/repo, authenticated as token. Returns (nil, nil) — not an error — if
+// the repo has no package.json at that location (e.g. a non-JS component).
+func FetchPackageJSON(token, owner, repo, path, ref string) (*PackageJSON, error) {
+	pkgPath := "package.json"
+	if trimmed := strings.Trim(path, "/"); trimmed != "" {
+		segments := strings.Split(trimmed, "/")
+		for i, s := range segments {
+			segments[i] = url.PathEscape(s)
+		}
+		pkgPath = strings.Join(segments, "/") + "/package.json"
+	}
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", url.PathEscape(owner), url.PathEscape(repo), pkgPath)
+	if ref != "" {
+		endpoint += "?ref=" + url.QueryEscape(ref)
+	}
+
+	raw, status, err := doGitHubGet(token, endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if status == 404 {
+		return nil, nil
+	}
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("github contents request failed (status %d)", status)
+	}
+
+	var gh struct {
+		Content  string `json:"content"`
+		Encoding string `json:"encoding"`
+	}
+	if err := json.Unmarshal(raw, &gh); err != nil {
+		return nil, err
+	}
+	content := gh.Content
+	if gh.Encoding == "base64" {
+		cleaned := strings.ReplaceAll(gh.Content, "\n", "")
+		decoded, err := base64.StdEncoding.DecodeString(cleaned)
+		if err != nil {
+			return nil, err
+		}
+		content = string(decoded)
+	}
+
+	var pkg PackageJSON
+	if err := json.Unmarshal([]byte(content), &pkg); err != nil {
+		return nil, err
+	}
+	return &pkg, nil
 }

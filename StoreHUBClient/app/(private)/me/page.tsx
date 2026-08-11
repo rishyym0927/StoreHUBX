@@ -98,7 +98,19 @@ export default function Me() {
       )
     : [];
   
-  const totalPages = profile?.components 
+  const handleComponentDeleted = (slug: string) => {
+    setProfile((prev) => {
+      if (!prev) return prev;
+      const components = prev.components.filter((c) => c.slug !== slug);
+      return {
+        ...prev,
+        components,
+        stats: { ...prev.stats, totalComponents: components.length },
+      };
+    });
+  };
+
+  const totalPages = profile?.components
     ? Math.ceil(profile.components.length / itemsPerPage)
     : 0;
 
@@ -304,11 +316,12 @@ export default function Me() {
                   <>
                     <div className="grid grid-cols-1 gap-6">
                       {paginatedComponents.map((component) => (
-                        <ComponentCard 
-                          key={component.id || component.slug} 
+                        <ComponentCard
+                          key={component.id || component.slug}
                           component={component}
                           showOwnerActions={true}
                           currentUserId={profile.user.id}
+                          onDeleted={handleComponentDeleted}
                         />
                       ))}
                     </div>

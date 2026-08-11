@@ -26,6 +26,8 @@ import type {
   GitHubLatestCommit,
   GitHubContributor,
   GitHubReadme,
+  GitHubAutofill,
+  GitHubAutofillQueryParams,
   UserProfileResponse,
   OwnerAnalyticsResponse,
   ComponentsQueryParams,
@@ -178,6 +180,22 @@ export const componentApi = {
       {
         method: "POST",
         body: JSON.stringify(data),
+        authToken,
+      }
+    );
+    return response;
+  },
+
+  /**
+   * Permanently delete a component (owner-only). Cascades server-side to its
+   * versions, build jobs, likes/ratings/comments, notifications, and removes
+   * it from any collections.
+   */
+  async delete(slug: string, authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      `/api/components/${slug}`,
+      {
+        method: "DELETE",
         authToken,
       }
     );
@@ -552,6 +570,17 @@ export const githubApi = {
   async getReadme(params: GitHubReadmeQueryParams) {
     const query = buildQueryString(params);
     return apiFetch<GitHubReadme>(`/github/readme${query}`);
+  },
+
+  /**
+   * Prefill new-component form fields (description/license/tags/frameworks)
+   * from a repo (requires auth). description/tags may come from an AI
+   * fallback when GitHub's own data is missing/sparse — see
+   * GitHubAutofill's descriptionSource/tagsSource.
+   */
+  async getAutofill(params: GitHubAutofillQueryParams, authToken: string) {
+    const query = buildQueryString(params);
+    return apiFetch<GitHubAutofill>(`/api/github/autofill${query}`, { authToken });
   },
 };
 

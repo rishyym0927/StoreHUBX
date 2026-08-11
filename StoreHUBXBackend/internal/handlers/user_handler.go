@@ -44,7 +44,10 @@ func buildProfileResponse(ctx context.Context, ownerID, viewerID string) (fiber.
 
 	return fiber.Map{
 		"user": fiber.Map{
-			"id":         user.ID,
+			// "id" is the providerId, not the Mongo _id: it's what
+			// Component.OwnerID/JWT's user_id claim use, and what the
+			// frontend's isOwner/currentUserId checks compare against.
+			"id":         user.ProviderID,
 			"name":       user.Name,
 			"email":      user.Email,
 			"username":   user.Username,

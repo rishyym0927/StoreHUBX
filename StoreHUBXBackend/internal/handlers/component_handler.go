@@ -282,6 +282,71 @@ func contains(list []string, target string) bool {
 	return false
 }
 
+// DELETE /api/components/:slug (owner-only)
+// Cascades to everything keyed off the component so nothing orphaned is left
+// behind: versions, build jobs, likes/ratings/comments (interactions),
+// notifications, and its membership in any collections. Deletes dependents
+// before the component doc itself so a mid-failure retry is safe (re-running
+// DeleteMany against already-empty collections is a no-op) rather than
+// leaving the component gone but its dependents still pointing at it.
+//
+// Note: this does not delete the built bundle assets from S3/MinIO — the
+// storage.Uploader interface has no delete method yet, so those objects are
+// left behind. Out of scope for this pass.
+func DeleteComponent(c *fiber.Ctx) error {
+	slug := c.Params("slug")
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return utils.Error(c, 401, "unauthorized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
+		return utils.Error(c, 404, "component not found")
+	}
+	if comp.OwnerID != uid {
+		return utils.Error(c, 403, "only the owner can delete this component")
+	}
+
+	database := db.Client.Database("storehub")
+	if _, err := database.Collection("component_versions").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
+		return utils.Error(c, 500, "failed to delete component versions")
+	}
+	if _, err := database.Collection("build_jobs").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
+		return utils.Error(c, 500, "failed to delete build jobs")
+	}
+	if _, err := database.Collection("interactions").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
+		return utils.Error(c, 500, "failed to delete likes/ratings/comments")
+	}
+	if _, err := database.Collection("notifications").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
+		return utils.Error(c, 500, "failed to delete notifications")
+	}
+	if _, err := database.Collection("collections").UpdateMany(
+		ctx,
+		bson.M{"componentIds": comp.ID},
+		bson.M{"$pull": bson.M{"componentIds": comp.ID}},
+	); err != nil {
+		return utils.Error(c, 500, "failed to update collections")
+	}
+
+	res, err := database.Collection("components").DeleteOne(ctx, bson.M{"_id": comp.ID})
+	if err != nil {
+		return utils.Error(c, 500, "failed to delete component")
+	}
+	if res.DeletedCount == 0 {
+		return utils.Error(c, 404, "component not found")
+	}
+
+	invalidateComponentCaches(ctx, slug)
+
+	return utils.Success(c, fiber.Map{
+		"message": "component deleted",
+	})
+}
+
 // POST /components/:slug/like (Protected)
 func ToggleLikeComponent(c *fiber.Ctx) error {
 	slug := c.Params("slug")

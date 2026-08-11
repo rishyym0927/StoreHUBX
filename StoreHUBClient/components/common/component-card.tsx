@@ -1,22 +1,62 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { Component } from "@/types";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
 import { RepoStatsBadge } from "@/components/common/repo-stats-badge";
+import { useAuth } from "@/lib/store";
+import { componentApi } from "@/lib/api";
+import { Trash2 } from "lucide-react";
 
 interface ComponentCardProps {
   component: Component;
   showOwnerActions?: boolean;
   currentUserId?: string;
+  /** Called after a successful delete so the parent list can drop this card. */
+  onDeleted?: (slug: string) => void;
 }
 
 export function ComponentCard({
   component,
   showOwnerActions = false,
-  currentUserId
+  currentUserId,
+  onDeleted,
 }: ComponentCardProps) {
+  const token = useAuth((s) => s.token);
   const isLinked = component.repoLink?.owner && component.repoLink?.repo;
   const isOwner = currentUserId && currentUserId === component.ownerId;
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const timer = setTimeout(() => setConfirmingDelete(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmingDelete]);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await componentApi.delete(component.slug, token);
+      onDeleted?.(component.slug);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete");
+      setConfirmingDelete(false);
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="brutal-lift brutal-lift-lg group border-2 border-black dark:border-white">
@@ -191,7 +231,23 @@ export function ComponentCard({
                 >
                   Add Version
                 </Link>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 border-2 font-mono text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    confirmingDelete
+                      ? "border-red-600 dark:border-red-400 bg-red-600 dark:bg-red-500 text-white"
+                      : "border-black dark:border-white hover:bg-red-600 hover:text-white hover:border-red-600 dark:hover:bg-red-500 dark:hover:border-red-500"
+                  }`}
+                  title={confirmingDelete ? "Click again to confirm" : "Delete component"}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {confirmingDelete && "Confirm?"}
+                </button>
               </div>
+              {deleteError && (
+                <p className="text-xs font-mono text-red-600 dark:text-red-400 w-full">{deleteError}</p>
+              )}
             </>
           )}
         </div>

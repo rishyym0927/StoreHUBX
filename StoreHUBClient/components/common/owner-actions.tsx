@@ -2,9 +2,11 @@
 
 import { componentApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
+import { useToast } from "@/components/common/toast";
 import Link from "next/link";
-import { useState } from "react";
-import { Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Lock, Trash2 } from "lucide-react";
 
 interface OwnerActionsProps {
   ownerId: string;
@@ -22,6 +24,8 @@ export function OwnerActions({
   collaborators: initialCollaborators = [],
 }: OwnerActionsProps) {
   const { token, user } = useAuth();
+  const router = useRouter();
+  const { showToast } = useToast();
   const isOwner = !!(user && token && user.id === ownerId);
 
   const [visibility, setVisibility] = useState(initialVisibility);
@@ -29,6 +33,17 @@ export function OwnerActions({
   const [newCollaborator, setNewCollaborator] = useState("");
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Auto-cancel the confirm state if the owner doesn't click again — avoids
+  // a "Confirm Delete?" button staying armed indefinitely if they walk away.
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const timer = setTimeout(() => setConfirmingDelete(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmingDelete]);
 
   if (!isOwner) {
     return (
@@ -81,6 +96,25 @@ export function OwnerActions({
       setError(err instanceof Error ? err.message : "Failed to remove collaborator");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!token) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      await componentApi.delete(componentSlug, token);
+      showToast("Component deleted.", "success");
+      router.push("/me");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete component");
+      setConfirmingDelete(false);
+      setDeleting(false);
     }
   };
 
@@ -152,6 +186,27 @@ export function OwnerActions({
         )}
 
         {error && <p className="text-xs font-mono text-red-600 dark:text-red-400">{error}</p>}
+      </div>
+
+      <div className="border-2 border-red-600 dark:border-red-400 p-4 space-y-2">
+        <span className="text-xs font-mono font-bold uppercase text-red-600 dark:text-red-400">Danger Zone</span>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className={`w-full flex items-center justify-center gap-2 border-2 px-4 py-3 text-sm font-mono font-bold uppercase transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            confirmingDelete
+              ? "border-red-600 dark:border-red-400 bg-red-600 dark:bg-red-500 text-white"
+              : "border-red-600 dark:border-red-400 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white dark:hover:bg-red-500 dark:hover:text-white"
+          }`}
+        >
+          <Trash2 className="w-4 h-4" />
+          {deleting ? "Deleting..." : confirmingDelete ? "Click again to confirm" : "Delete Component"}
+        </button>
+        {confirmingDelete && !deleting && (
+          <p className="text-xs font-mono text-red-600 dark:text-red-400">
+            This permanently deletes the component, its versions, builds, likes, ratings and comments. This can&apos;t be undone.
+          </p>
+        )}
       </div>
     </div>
   );
