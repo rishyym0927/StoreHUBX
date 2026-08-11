@@ -56,23 +56,12 @@ export function PreviewIframe({ url, height = 520 }: Props) {
     return { src: url, invalidUrl: false };
   }, [url]);
   
-  // Test if URL is accessible
+  // Reset loading/error state whenever the preview URL changes; the iframe's
+  // own onLoad/onError below are the source of truth for reachability.
   useEffect(() => {
     if (!src) return;
-    
     setIsLoading(true);
     setLoadError(null);
-    
-    // Try to fetch the URL to see if it's accessible
-    fetch(src, { method: 'HEAD', mode: 'no-cors' })
-      .then(() => {
-        setIsLoading(false);
-      })
-      .catch(err => {
-        console.error("❌ Preview URL is not accessible:", src, err);
-        setLoadError(`Cannot access preview: ${err.message}`);
-        setIsLoading(false);
-      });
   }, [src]);
 
   if (!src) {
