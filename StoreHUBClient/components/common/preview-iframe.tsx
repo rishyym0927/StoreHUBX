@@ -142,7 +142,7 @@ export function PreviewIframe({ url, height = 520 }: Props) {
             setIsLoading(false);
           }}
           onError={(e) => {
-            console.error("❌ Iframe failed to load:", src, e);
+            console.error("Iframe failed to load:", src, e);
             setLoadError("Iframe failed to load - the preview URL may be invalid or blocked by CORS");
             setIsLoading(false);
           }}
