@@ -380,6 +380,12 @@ export interface CollectionCreateRequest {
   visibility?: "public" | "private";
 }
 
+export interface CollectionUpdateRequest {
+  name?: string;
+  description?: string;
+  visibility?: "public" | "private";
+}
+
 export interface CollectionCreateResponse {
   status: string;
   collection: Collection;

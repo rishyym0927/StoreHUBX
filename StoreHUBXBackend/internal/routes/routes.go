@@ -91,6 +91,8 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Collections (Phase 5)
 	api.Post("/collections", handlers.CreateCollection)
+	api.Patch("/collections/:id", handlers.UpdateCollection)
+	api.Delete("/collections/:id", handlers.DeleteCollection)
 	api.Post("/collections/:id/components/:componentId", handlers.AddComponentToCollection)
 	api.Delete("/collections/:id/components/:componentId", handlers.RemoveComponentFromCollection)
 	// OptionalAuth so an owner can see their own private collections

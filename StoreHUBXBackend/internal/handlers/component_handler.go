@@ -14,6 +14,7 @@ import (
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -61,6 +62,15 @@ func CreateComponent(c *fiber.Ctx) error {
 	now := time.Now()
 	body.CreatedAt = now
 	body.UpdatedAt = now
+
+	// The list filter lowercases the incoming query and then matches stored
+	// values exactly, so anything stored with different casing is invisible to
+	// it. Normalize on write so both sides agree.
+	body.Frameworks = normalizeTerms(body.Frameworks)
+	body.Tags = normalizeTerms(body.Tags)
+	if len(body.Frameworks) == 0 {
+		return utils.Error(c, 400, "component name and frameworks are required")
+	}
 	if body.Visibility != "private" {
 		body.Visibility = "public"
 	}
@@ -86,8 +96,15 @@ func CreateComponent(c *fiber.Ctx) error {
 		body.Slug = fmt.Sprintf("%s-%d", baseSlug, suffix)
 	}
 
-	if _, err := col.InsertOne(ctx, body); err != nil {
+	res, err := col.InsertOne(ctx, body)
+	if err != nil {
 		return utils.Error(c, 500, "failed to insert component")
+	}
+	// Without this the response carries a zero ObjectID, so a client can't use
+	// the created component's id (to follow it, add it to a collection, …)
+	// without re-fetching by slug. Matches CreateCollection.
+	if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
+		body.ID = oid
 	}
 	cache.Incr(ctx, "cache:components:list:epoch")
 
@@ -283,6 +300,26 @@ func GetComponent(c *fiber.Ctx) error {
 	})
 }
 
+// normalizeTerms trims, lowercases and de-duplicates a framework/tag list
+// while preserving the author's ordering. Shared by CreateComponent and the
+// cmd/normalize_frameworks backfill so both apply identical rules.
+func normalizeTerms(terms []string) []string {
+	seen := make(map[string]struct{}, len(terms))
+	out := make([]string, 0, len(terms))
+	for _, t := range terms {
+		v := strings.ToLower(strings.TrimSpace(t))
+		if v == "" {
+			continue
+		}
+		if _, dup := seen[v]; dup {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
 func contains(list []string, target string) bool {
 	for _, v := range list {
 		if v == target {
@@ -300,9 +337,10 @@ func contains(list []string, target string) bool {
 // DeleteMany against already-empty collections is a no-op) rather than
 // leaving the component gone but its dependents still pointing at it.
 //
-// Note: this does not delete the built bundle assets from S3/MinIO — the
-// storage.Uploader interface has no delete method yet, so those objects are
-// left behind. Out of scope for this pass.
+// Note: this does not delete the built bundle assets from S3/MinIO. The API
+// process has no S3 client (only the worker constructs one), so that cleanup
+// is handled out-of-band by cmd/reap_orphans, which deletes bucket prefixes
+// with no surviving component.
 func DeleteComponent(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 	uid, ok := c.Locals("user_id").(string)
@@ -333,6 +371,14 @@ func DeleteComponent(c *fiber.Ctx) error {
 	}
 	if _, err := database.Collection("notifications").DeleteMany(ctx, bson.M{"componentId": comp.ID}); err != nil {
 		return utils.Error(c, 500, "failed to delete notifications")
+	}
+	// Follows key off the component's ObjectID *hex*, not the ObjectID — same
+	// as notify.NewVersion and the followedByMe lookup in GetComponent.
+	if _, err := database.Collection("follows").DeleteMany(ctx, bson.M{
+		"targetType": models.FollowTargetComponent,
+		"targetId":   comp.ID.Hex(),
+	}); err != nil {
+		return utils.Error(c, 500, "failed to delete follows")
 	}
 	if _, err := database.Collection("collections").UpdateMany(
 		ctx,

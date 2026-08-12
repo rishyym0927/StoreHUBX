@@ -33,6 +33,7 @@ import type {
   NotificationsListResponse,
   CollectionCreateRequest,
   CollectionCreateResponse,
+  CollectionUpdateRequest,
   CollectionsListResponse,
   CollectionDetailResponse,
   CollectionMutationResponse,
@@ -758,6 +759,28 @@ export const collectionApi = {
     const response = await apiFetch<CollectionDetailResponse>(
       `/collections/${id}`,
       { authToken }
+    );
+    return response;
+  },
+
+  /**
+   * Rename a collection / change its description or visibility (owner-only)
+   */
+  async update(id: string, data: CollectionUpdateRequest, authToken: string) {
+    const response = await apiFetch<CollectionMutationResponse>(
+      `/api/collections/${id}`,
+      { method: "PATCH", body: JSON.stringify(data), authToken }
+    );
+    return response.collection;
+  },
+
+  /**
+   * Delete a collection (owner-only). The components it grouped are untouched.
+   */
+  async remove(id: string, authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      `/api/collections/${id}`,
+      { method: "DELETE", authToken }
     );
     return response;
   },

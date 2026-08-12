@@ -26,7 +26,9 @@ go run cmd/worker/main.go     # background build worker (separate process)
 
 Config comes from `.env` (copy `.env.example`), loaded via `internal/config`. `MONGO_URI` is required — the process calls `log.Fatal` if it's unset. Required GitHub OAuth vars: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URL`. `REDIS_ADDR` is optional — caching and the fast build-notification path degrade gracefully to no-cache/poll-only when Redis isn't reachable. `CDN_BASE_URL` is optional and overrides `S3_PUBLIC_BASE_URL` for bundle URLs when set.
 
-One-off maintenance scripts live under `cmd/`: `cmd/fix_bucket_policy`, `cmd/fix_html_urls`, `cmd/fix_mime_types` (run with `go run cmd/<name>/main.go`).
+One-off maintenance scripts live under `cmd/` (run with `go run cmd/<name>/main.go`). Both default to a dry run and only write when passed `--apply`:
+- `cmd/normalize_frameworks` — backfills the lowercase/trim/de-dupe of `frameworks`/`tags` that `CreateComponent` now applies on write, so older docs are reachable by the list filter.
+- `cmd/reap_orphans` — deletes `components/{slug}/` prefixes in S3/MinIO whose component no longer exists in Mongo. `DeleteComponent` cannot do this itself; the API process has no S3 client.
 
 No test suite currently exists in the backend.
 

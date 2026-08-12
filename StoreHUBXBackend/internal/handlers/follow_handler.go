@@ -17,11 +17,16 @@ type followPayload struct {
 	TargetID   string `json:"targetId"`
 }
 
+// Only component follows are accepted. models.FollowTargetUser still exists
+// and the storage shape supports it, but nothing consumes it: notify.NewVersion
+// fans out on {targetType: component} alone, so a user follow would store a row
+// that can never produce a notification. To re-enable it, make notify also fan
+// out to followers of the component's OwnerID, then allow the type here.
 func (p followPayload) valid() bool {
 	if p.TargetID == "" {
 		return false
 	}
-	return p.TargetType == string(models.FollowTargetUser) || p.TargetType == string(models.FollowTargetComponent)
+	return p.TargetType == string(models.FollowTargetComponent)
 }
 
 // POST /api/follows (protected) - body: {targetType: "user"|"component", targetId}
@@ -33,12 +38,8 @@ func CreateFollow(c *fiber.Ctx) error {
 
 	var payload followPayload
 	if err := c.BodyParser(&payload); err != nil || !payload.valid() {
-		return utils.Error(c, 400, "targetType (user|component) and targetId are required")
+		return utils.Error(c, 400, "targetType must be component, and targetId is required")
 	}
-	if payload.TargetType == string(models.FollowTargetUser) && payload.TargetID == uid {
-		return utils.Error(c, 400, "cannot follow yourself")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -68,7 +69,7 @@ func DeleteFollow(c *fiber.Ctx) error {
 
 	var payload followPayload
 	if err := c.BodyParser(&payload); err != nil || !payload.valid() {
-		return utils.Error(c, 400, "targetType (user|component) and targetId are required")
+		return utils.Error(c, 400, "targetType must be component, and targetId is required")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

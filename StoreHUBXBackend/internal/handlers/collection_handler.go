@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -92,6 +93,99 @@ func ListUserCollections(c *fiber.Ctx) error {
 	return utils.Success(c, fiber.Map{
 		"collections": collections,
 	})
+}
+
+// PATCH /api/collections/:id (protected, owner only)
+//
+// Owner scoping lives in the filter rather than a separate ownership read, so
+// a non-owner gets the same 404 as a missing collection — matching
+// AddComponentToCollection and not leaking which ids exist.
+func UpdateCollection(c *fiber.Ctx) error {
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return utils.Error(c, 401, "unauthorized")
+	}
+
+	collID, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return utils.Error(c, 400, "invalid collection id")
+	}
+
+	var body struct {
+		Name        *string `json:"name"`
+		Description *string `json:"description"`
+		Visibility  *string `json:"visibility"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return utils.Error(c, 400, "invalid JSON body")
+	}
+
+	set := bson.M{"updatedAt": time.Now()}
+	if body.Name != nil {
+		name := strings.TrimSpace(*body.Name)
+		if name == "" {
+			return utils.Error(c, 400, "collection name cannot be empty")
+		}
+		set["name"] = name
+	}
+	if body.Description != nil {
+		set["description"] = strings.TrimSpace(*body.Description)
+	}
+	if body.Visibility != nil {
+		if *body.Visibility != "public" && *body.Visibility != "private" {
+			return utils.Error(c, 400, "visibility must be public or private")
+		}
+		set["visibility"] = *body.Visibility
+	}
+	if len(set) == 1 { // only updatedAt — nothing was actually supplied
+		return utils.Error(c, 400, "nothing to update")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	col := db.Client.Database("storehub").Collection("collections")
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var updated models.Collection
+	if err := col.FindOneAndUpdate(ctx,
+		bson.M{"_id": collID, "ownerId": uid},
+		bson.M{"$set": set},
+		opts,
+	).Decode(&updated); err != nil {
+		return utils.Error(c, 404, "collection not found or not owned by you")
+	}
+
+	return utils.Success(c, fiber.Map{"collection": updated})
+}
+
+// DELETE /api/collections/:id (protected, owner only)
+//
+// Deleting a collection removes only the grouping — the components it
+// referenced are untouched, since a collection never owned them.
+func DeleteCollection(c *fiber.Ctx) error {
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return utils.Error(c, 401, "unauthorized")
+	}
+
+	collID, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return utils.Error(c, 400, "invalid collection id")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	col := db.Client.Database("storehub").Collection("collections")
+	res, err := col.DeleteOne(ctx, bson.M{"_id": collID, "ownerId": uid})
+	if err != nil {
+		return utils.Error(c, 500, "failed to delete collection")
+	}
+	if res.DeletedCount == 0 {
+		return utils.Error(c, 404, "collection not found or not owned by you")
+	}
+
+	return utils.Success(c, fiber.Map{"message": "collection deleted"})
 }
 
 // GET /collections/:id (public; OptionalAuth reveals the caller's own private collection)

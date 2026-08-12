@@ -477,6 +477,57 @@ func (u *S3Uploader) ListObjects(ctx context.Context, prefix string) ([]string, 
 	return objects, nil
 }
 
+// ListTopLevelPrefixes lists the immediate child "directories" under prefix
+// (non-recursive), returning the segment names without the parent prefix or
+// the trailing slash — e.g. "components/" yields component slugs.
+func (u *S3Uploader) ListTopLevelPrefixes(ctx context.Context, prefix string) ([]string, error) {
+	var names []string
+	for obj := range u.client.ListObjects(ctx, u.bucket, minio.ListObjectsOptions{
+		Prefix:    prefix,
+		Recursive: false,
+	}) {
+		if obj.Err != nil {
+			return nil, obj.Err
+		}
+		name := strings.TrimSuffix(strings.TrimPrefix(obj.Key, prefix), "/")
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}
+
+// DeletePrefix removes every object under prefix and returns how many were
+// deleted. Deliberately not on the storage.Uploader interface — like
+// ListObjects and FixMimeTypesForComponent, it is an S3-specific maintenance
+// operation used by cmd/ scripts, not part of the publish path.
+func (u *S3Uploader) DeletePrefix(ctx context.Context, prefix string) (int, error) {
+	if strings.TrimSpace(prefix) == "" {
+		return 0, fmt.Errorf("refusing to delete an empty prefix")
+	}
+
+	keys, err := u.ListObjects(ctx, prefix)
+	if err != nil {
+		return 0, fmt.Errorf("list objects: %w", err)
+	}
+	if len(keys) == 0 {
+		return 0, nil
+	}
+
+	objectsCh := make(chan minio.ObjectInfo, len(keys))
+	for _, k := range keys {
+		objectsCh <- minio.ObjectInfo{Key: k}
+	}
+	close(objectsCh)
+
+	for rmErr := range u.client.RemoveObjects(ctx, u.bucket, objectsCh, minio.RemoveObjectsOptions{}) {
+		if rmErr.Err != nil {
+			return 0, fmt.Errorf("delete %s: %w", rmErr.ObjectName, rmErr.Err)
+		}
+	}
+	return len(keys), nil
+}
+
 // UpdateObjectContentType updates the object's system Content-Type using server-side copy (ReplaceMetadata).
 // Falls back to streaming to a temp file then FPutObject if CopyObject fails.
 func (u *S3Uploader) UpdateObjectContentType(ctx context.Context, key, contentType string) error {
