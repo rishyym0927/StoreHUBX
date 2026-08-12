@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useComponents } from "@/hooks/use-api";
 import { ComponentCard } from "@/components/common/component-card";
@@ -12,6 +12,14 @@ import { AlertTriangle, Search } from "lucide-react";
 import type { ComponentsQueryParams } from "@/types";
 
 export default function ComponentsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ComponentsPageContent />
+    </Suspense>
+  );
+}
+
+function ComponentsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
@@ -24,7 +32,6 @@ export default function ComponentsPage() {
     setSearchQuery(searchParams.get("q") || "");
     setFrameworkFilter(searchParams.get("framework") || "");
     setTagsFilter(searchParams.get("tags") || "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Get page and limit from URL

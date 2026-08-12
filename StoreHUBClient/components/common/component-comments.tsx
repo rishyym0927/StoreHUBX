@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/store";
 import { commentApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
@@ -24,11 +24,7 @@ export function ComponentComments({ slug }: CommentsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchComments();
-  }, [slug]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       const data = await commentApi.list(slug);
       setComments(data || []);
@@ -38,7 +34,11 @@ export function ComponentComments({ slug }: CommentsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [slug, showToast]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

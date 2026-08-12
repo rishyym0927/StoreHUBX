@@ -230,8 +230,8 @@ export function sortByDate<T>(
   ascending = false
 ): T[] {
   return [...array].sort((a, b) => {
-    const dateA = new Date(a[dateField] as any).getTime();
-    const dateB = new Date(b[dateField] as any).getTime();
+    const dateA = new Date(a[dateField] as string | number | Date).getTime();
+    const dateB = new Date(b[dateField] as string | number | Date).getTime();
     return ascending ? dateA - dateB : dateB - dateA;
   });
 }
@@ -405,7 +405,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 /**
  * Debounce function execution
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

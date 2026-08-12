@@ -15,7 +15,6 @@ function FeaturedComponentCard({ component }: { component: Component }) {
 
 export default function Home() {
   const token = useAuth((s) => s.token);
-  const user = useAuth((s) => s.user);
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [checking, setChecking] = useState(true);
 

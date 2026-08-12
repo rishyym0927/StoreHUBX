@@ -1,6 +1,5 @@
 import { ProtectedRoute } from "@/components/common/protected-route";
 import { GithubBrowser } from "./github-browser";
-import { OwnershipGuard } from "@/components/common/ownership-guard";
 import { Search, Folder, Link2 } from "lucide-react";
 
 export default async function ImportFromGitHub({

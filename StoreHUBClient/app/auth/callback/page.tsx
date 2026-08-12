@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const params = useSearchParams();
   const router = useRouter();
   const setAuth = useAuth((s) => s.setAuth);
@@ -35,5 +35,13 @@ export default function AuthCallback() {
     <div className="py-20 text-center opacity-80">
       {error ?? "Completing sign-in…"}
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center opacity-80">Completing sign-in…</div>}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

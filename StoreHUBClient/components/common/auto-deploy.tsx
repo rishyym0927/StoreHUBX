@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { versionApi, githubApi } from "@/lib/api";
@@ -32,7 +32,7 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
   const isOwner = !!(user && token && user.providerId === component.ownerId);
 
   // Check for new commits
-  const checkForNewCommits = async () => {
+  const checkForNewCommits = useCallback(async () => {
     if (!isLinked || !token) return;
 
     setChecking(true);
@@ -60,13 +60,14 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
     } finally {
       setChecking(false);
     }
-  };
+  }, [isLinked, token, component.repoLink, versions]);
 
   // Auto-check on mount
   useEffect(() => {
     if (isLinked) {
       checkForNewCommits();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [component.id]);
 
   // Deploy new commit
@@ -84,7 +85,7 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
         changelog: `Auto-deployed from commit ${latestCommit.substring(0, 7)}`,
       };
 
-      const result = await versionApi.autoDeploy(component.slug, payload, token);
+      await versionApi.autoDeploy(component.slug, payload, token);
       
       setSuccess(true);
       setHasNewCommit(false);

@@ -4,12 +4,11 @@ import React, { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/common/protected-route";
 import { OwnershipGuard } from "@/components/common/ownership-guard";
 import { useAuth } from "@/lib/store";
-import { versionApi, buildApi, componentApi } from "@/lib/api";
+import { versionApi } from "@/lib/api";
 import { useMutation, useComponent } from "@/hooks/use-api";
 import { isValidVersion, isValidUrl } from "@/lib/api-utils";
 import { useRouter } from "next/navigation";
 import type { VersionCreateRequest } from "@/types";
-import { BuildStatus } from "@/components/common/build-status";
 import { CheckCircle2, AlertTriangle, PartyPopper } from "lucide-react";
 
 const inputClass =
@@ -20,9 +19,7 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
   const router = useRouter();
   const token = useAuth((s) => s.token);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [buildId, setBuildId] = useState<string | null>(null);
   const [showBuildStatus, setShowBuildStatus] = useState(false);
-  const [triggeringBuild, setTriggeringBuild] = useState(false);
 
   const { mutate, loading, error, reset } = useMutation(
     (data: VersionCreateRequest) => versionApi.create(slug, data, token!)

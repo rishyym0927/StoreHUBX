@@ -7,7 +7,6 @@ import {
   versionApi,
   buildApi,
   githubApi,
-  userApi,
   ApiError,
 } from "@/lib/api";
 import type {
@@ -243,7 +242,7 @@ export function useBuildStatus(
     return () => {
       cancelled = true;
     };
-  }, [buildId, token, autoRefresh]); // Remove fetchBuild and state.data from dependencies
+  }, [buildId, token, autoRefresh, fetchBuild]);
 
   return {
     ...state,

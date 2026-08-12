@@ -1,5 +1,4 @@
 import type {
-  ApiResponse,
   Component,
   ComponentsListResponse,
   ComponentDetailResponse,
@@ -140,7 +139,7 @@ async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
 /**
  * Build query string from params object
  */
-function buildQueryString(params: Record<string, any>): string {
+function buildQueryString(params: object): string {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {

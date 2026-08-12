@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { use, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { use, useState } from "react";
 
 const frameworks = ["react", "vue", "svelte", "angular"] as const;
 
@@ -23,10 +23,14 @@ export function ComponentsToolbar({
   function apply(next: Partial<{ q: string; framework: string; page: number }>) {
     const params = new URLSearchParams(window.location.search);
     if (next.q !== undefined) {
-      next.q ? params.set("q", next.q) : params.delete("q");
+      if (next.q) params.set("q", next.q);
+      else params.delete("q");
+      setQ(next.q);
     }
     if (next.framework !== undefined) {
-      next.framework ? params.set("framework", next.framework) : params.delete("framework");
+      if (next.framework) params.set("framework", next.framework);
+      else params.delete("framework");
+      setFw(next.framework);
     }
     // reset page on new filters/search
     params.delete("page");

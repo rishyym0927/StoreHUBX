@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/store";
 import { ratingApi } from "@/lib/api";
 import { RatingStars } from "@/components/common/rating-stars";
@@ -27,11 +27,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
   const [score, setScore] = useState(0);
   const [review, setReview] = useState("");
 
-  useEffect(() => {
-    fetchRatings();
-  }, [slug]);
-
-  const fetchRatings = async () => {
+  const fetchRatings = useCallback(async () => {
     try {
       const data = await ratingApi.list(slug);
       setRatings(data.ratings || []);
@@ -48,7 +44,11 @@ export function ComponentRatings({ slug }: RatingsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [slug, user?.providerId, showToast]);
+
+  useEffect(() => {
+    fetchRatings();
+  }, [fetchRatings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

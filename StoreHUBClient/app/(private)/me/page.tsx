@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import * as Avatar from "@radix-ui/react-avatar";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -25,7 +25,15 @@ interface GithubPublicProfile {
 }
 
 export default function Me() {
-  const { user, token } = useAuth();
+  return (
+    <Suspense fallback={null}>
+      <MeContent />
+    </Suspense>
+  );
+}
+
+function MeContent() {
+  const { token } = useAuth();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +45,6 @@ export default function Me() {
   const itemsPerPage = parseInt(searchParams.get("limit") || "10", 10);
 
   const [githubData, setGithubData] = useState<GithubPublicProfile | null>(null);
-  const [loadingGithub, setLoadingGithub] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -54,7 +61,6 @@ export default function Me() {
 
         // Fetch Github specific details if applicable
         if (data.user?.provider === 'github' && data.user?.username) {
-          setLoadingGithub(true);
           try {
             const res = await fetch(`https://api.github.com/users/${data.user.username}`);
             if (res.ok) {
@@ -63,8 +69,6 @@ export default function Me() {
             }
           } catch (e) {
             console.error("Github profile fetch error:", e);
-          } finally {
-            setLoadingGithub(false);
           }
         }
       } catch (err) {

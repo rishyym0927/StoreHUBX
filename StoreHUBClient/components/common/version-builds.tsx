@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useBuilds } from "@/hooks/use-api";
 import { formatRelativeTime } from "@/lib/api-utils";
-import type { BuildJob } from "@/types";
 import { buildApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
 import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";

@@ -47,7 +47,7 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
         }
 
         setComponent(comp);
-      } catch (err) {
+      } catch {
         setError("Failed to verify ownership");
         setTimeout(() => {
           router.push(`/components/${slug}`);
