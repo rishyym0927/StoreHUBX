@@ -88,7 +88,7 @@ export function ComponentComments({ slug }: CommentsProps) {
             <button
               type="submit"
               disabled={isSubmitting || !newComment.trim()}
-              className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black font-mono font-bold uppercase text-sm border-2 border-black dark:border-white hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black font-mono font-bold uppercase text-sm border-2 border-black dark:border-white hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_#1B1712] dark:hover:shadow-[4px_4px_0px_0px_#EFE8D9] transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
               {isSubmitting ? "Posting..." : "Post Comment"}
             </button>

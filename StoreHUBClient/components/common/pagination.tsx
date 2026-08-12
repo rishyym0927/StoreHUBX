@@ -47,7 +47,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
               onClick={() => onPageChange(pageNum)}
               className={`border-2 px-5 py-3 text-sm font-mono font-bold ${
                 pageNum === currentPage
-                  ? "border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]"
+                  ? "border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-[4px_4px_0px_0px_#1B1712] dark:shadow-[4px_4px_0px_0px_#EFE8D9]"
                   : "brutal-lift border-black dark:border-white"
               }`}
             >

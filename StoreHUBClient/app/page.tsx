@@ -19,6 +19,7 @@ export default function Home() {
   const [checking, setChecking] = useState(true);
 
   const [components, setComponents] = useState<Component[]>([]);
+  const [totalComponents, setTotalComponents] = useState(0);
   const [loadingComps, setLoadingComps] = useState(true);
 
   // Verify membership (only if we have a token in Zustand)
@@ -47,39 +48,18 @@ export default function Home() {
     };
   }, [token]);
 
-  // Load latest components (public)
+  // Load components (public). Fetch a page of 100 so the stats below reflect
+  // the real catalogue rather than the handful shown; `total` is the server's
+  // own count, so the component figure stays right past 100 either way.
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const res = await componentApi.list({ limit: 12, page: 1 });
-
-        // Get the components array from the response
-        const componentsArray = res.components || [];
-
-        // Filter out components with duplicate slugs (keep the newest one)
-        const uniqueComponents = componentsArray.reduce<Component[]>((acc, curr) => {
-          // Find existing component with same slug
-          const existingIndex = acc.findIndex(c => c.slug === curr.slug);
-
-          if (existingIndex === -1) {
-            // No duplicate, add to array
-            acc.push(curr);
-          } else {
-            // Compare dates to keep newer version
-            const existing = acc[existingIndex];
-            const existingDate = new Date(existing.updatedAt || existing.createdAt || 0);
-            const currentDate = new Date(curr.updatedAt || curr.createdAt || 0);
-
-            if (currentDate > existingDate) {
-              // Replace with newer version
-              acc[existingIndex] = curr;
-            }
-          }
-          return acc;
-        }, []);
-
-        if (mounted) setComponents(uniqueComponents);
+        const res = await componentApi.list({ limit: 100, page: 1 });
+        if (mounted) {
+          setComponents(res.components || []);
+          setTotalComponents(res.total ?? res.components?.length ?? 0);
+        }
       } catch (err) {
         console.error("Error fetching components:", err);
         if (mounted) setComponents([]);
@@ -94,16 +74,18 @@ export default function Home() {
 
   const isMember = useMemo(() => !!(profile && profile.status === "authenticated"), [profile]);
 
-  // Calculate stats
+  // Stats. The component count is the server's total; the other two are
+  // derived from the fetched page (capped at 100 above), which is exact at
+  // the current catalogue size.
   const stats = useMemo(() => {
     const uniqueFrameworks = new Set<string>();
-    components.forEach(c => c.frameworks?.forEach(fw => uniqueFrameworks.add(fw)));
+    components.forEach(c => c.frameworks?.forEach(fw => uniqueFrameworks.add(fw.toLowerCase())));
     return {
-      totalComponents: components.length,
+      totalComponents,
       frameworks: uniqueFrameworks.size,
       linkedRepos: components.filter(c => c.repoLink?.owner && c.repoLink?.repo).length
     };
-  }, [components]);
+  }, [components, totalComponents]);
 
   return (
     <div className="space-y-12 pb-12">
@@ -304,11 +286,13 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-8">
-            {components.slice(0, 6).map((c, i) => (
-              <div key={c.id || c.slug} className="stagger-in" style={{ "--stagger-index": i } as React.CSSProperties}>
-                <FeaturedComponentCard component={c} />
-              </div>
-            ))}
+            <div className="grid gap-6 md:grid-cols-2">
+              {components.slice(0, 6).map((c, i) => (
+                <div key={c.id || c.slug} className="stagger-in h-full" style={{ "--stagger-index": i } as React.CSSProperties}>
+                  <FeaturedComponentCard component={c} />
+                </div>
+              ))}
+            </div>
 
             {/* View All Button */}
             <div className="text-center pt-4">
@@ -316,46 +300,28 @@ export default function Home() {
                 href="/components"
                 className="brutal-scale inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono bg-white text-black dark:bg-black dark:text-white"
               >
-                Explore All {components.length} Components →
+                Explore All {stats.totalComponents} Components →
               </Link>
             </div>
           </div>
         )}
       </section>
 
-      {/* Improved Feature CTA Section */}
-      {!isMember && components.length > 0 && (
-        <section className="relative overflow-hidden border-2 border-black dark:border-white bg-grid-pattern p-12 md:p-20 text-center">
-          <div className="absolute inset-0 bg-white/80 dark:bg-black/80 pointer-events-none"></div>
-          <div className="relative z-10 max-w-3xl mx-auto space-y-6">
-            <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter">
-              READY TO BUILD?
-            </h2>
-            <p className="text-lg font-mono text-black/80 dark:text-white/80 leading-relaxed font-bold">
-              Join the open source community and start showcasing your UI components with live previews today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <a
-                href={GITHUB_LOGIN_URL}
-                className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-sm"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                </svg>
-                Sign in with GitHub
-              </a>
-              <a
-                href="https://github.com/rishyym0927/StoreHUBX"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="brutal-lift brutal-lift-lg flex items-center justify-center gap-3 border-2 border-black dark:border-white px-8 py-4 bg-white text-black dark:bg-black dark:text-white font-mono font-bold text-sm"
-              >
-                <Star className="w-4 h-4" /> Star on GitHub
-              </a>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* The hero already carries the sign-in CTA, so this is just the repo
+          link rather than a second full-height pitch saying the same thing. */}
+      <section className="border-2 border-black dark:border-white px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <p className="font-mono text-sm text-black/70 dark:text-white/70">
+          StoreHUBX is open source.
+        </p>
+        <a
+          href="https://github.com/rishyym0927/StoreHUBX"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="brutal-scale flex items-center gap-2 border-2 border-black dark:border-white px-4 py-2 font-mono font-bold text-xs uppercase tracking-wider"
+        >
+          <Star className="w-3.5 h-3.5" /> Star on GitHub
+        </a>
+      </section>
     </div>
   );
 }

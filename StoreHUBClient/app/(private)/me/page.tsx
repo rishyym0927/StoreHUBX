@@ -153,14 +153,14 @@ function MeContent() {
           {profile && !loading && (
             <div className="space-y-8 sm:space-y-12">
               {/* Header Section Redesign */}
-              <div className="relative border-2 border-black dark:border-white overflow-hidden mb-12 bg-white dark:bg-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all">
+              <div className="relative border-2 border-black dark:border-white overflow-hidden mb-12 bg-white dark:bg-black shadow-[4px_4px_0px_0px_#1B1712] dark:shadow-[4px_4px_0px_0px_#EFE8D9] transition-all">
                 {/* Cover Pattern Area */}
                 <div className="h-32 sm:h-48 bg-grid-pattern border-b-2 border-black dark:border-white relative flex items-end overflow-hidden bg-white dark:bg-black">
                 </div>
                 
                 <div className="px-6 sm:px-10 pb-10 relative">
                   {/* Floating Avatar */}
-                  <div className="absolute -top-16 sm:-top-20 w-32 h-32 sm:w-40 sm:h-40 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+                  <div className="absolute -top-16 sm:-top-20 w-32 h-32 sm:w-40 sm:h-40 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#1B1712] dark:shadow-[4px_4px_0px_0px_#EFE8D9]">
                     <Avatar.Root className="w-full h-full">
                       <Avatar.Image
                         src={profile.user.avatarUrl}
@@ -221,7 +221,7 @@ function MeContent() {
                              </a>
                           )}
                           {githubData.html_url && (
-                             <a href={githubData.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 border-2 border-black dark:border-white px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all active:translate-y-0 active:shadow-none">
+                             <a href={githubData.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 border-2 border-black dark:border-white px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black shadow-[4px_4px_0px_0px_#1B1712] dark:shadow-[4px_4px_0px_0px_#EFE8D9] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#1B1712] dark:hover:shadow-[6px_6px_0px_0px_#EFE8D9] transition-all active:translate-y-0 active:shadow-none">
                                <Star className="w-3.5 h-3.5" /> View GitHub
                              </a>
                           )}
@@ -274,13 +274,13 @@ function MeContent() {
                   <div className="flex gap-3">
                     <Link
                       href="/me/analytics"
-                      className="inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                      className="inline-block border-2 border-black dark:border-white px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_#1B1712] dark:hover:shadow-[6px_6px_0px_0px_#EFE8D9] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
                     >
                       ANALYTICS
                     </Link>
                     <Link
                       href="/components/new"
-                      className="inline-block border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                      className="inline-block border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[6px_6px_0px_0px_#1B1712] dark:hover:shadow-[6px_6px_0px_0px_#EFE8D9] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
                     >
                       + NEW COMPONENT
                     </Link>
@@ -306,7 +306,7 @@ function MeContent() {
                         action={
                           <Link
                             href="/components/new"
-                            className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                            className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_#1B1712] dark:hover:shadow-[8px_8px_0px_0px_#EFE8D9] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
                           >
                             CREATE YOUR FIRST COMPONENT →
                           </Link>
@@ -351,7 +351,7 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <div className="border-2 border-black dark:border-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+    <div className="border-2 border-black dark:border-white p-6 shadow-[4px_4px_0px_0px_#1B1712] dark:shadow-[4px_4px_0px_0px_#EFE8D9] hover:shadow-[6px_6px_0px_0px_#1B1712] dark:hover:shadow-[6px_6px_0px_0px_#EFE8D9] transition-all">
       <div className="text-xs font-mono text-black/60 dark:text-white/60 mb-3 uppercase tracking-wider font-bold">
         {label}
       </div>

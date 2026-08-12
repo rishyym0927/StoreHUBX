@@ -121,7 +121,7 @@ export function PreviewIframe({ url, height = 520 }: Props) {
         </div>
       )}
       
-      <div className="relative bg-white dark:bg-gray-950" style={{ minHeight: height }}>
+      <div className="relative bg-white dark:bg-black" style={{ minHeight: height }}>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-black/90 z-10">
             <div className="text-center">

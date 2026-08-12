@@ -4,11 +4,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Theme tokens - Warm Paper Design System
-   ONE paper tone for the whole light mode — page and cards are the same
-   colour. Separation comes from the 2px ink borders, which is how this
+   ONE tone per mode — page and cards share a colour in both light and
+   dark. Separation comes from the 2px borders, which is how this
    brutalist system is meant to work; a lighter "card" tone on a darker
    page just reads as two mismatched backgrounds. Depth, where a surface
-   genuinely needs it, comes from bg-black/5 tints of the ink colour. */
+   genuinely needs it, comes from bg-black/5 tints of the ink colour.
+
+   Light: paper #EFE8D9 on warm near-black ink.
+   Dark:  the same two colours swapped — warm charcoal #1B1712 canvas
+          (--color-black, so `dark:bg-black` cards match the page exactly)
+          with warm paper ink. Neither mode uses a cold grey or a pure
+          #000/#FFF anywhere. */
 @theme {
   --color-page:      #EFE8D9;  /* the single warm paper tone */
   --color-ink:       #1B1712;  /* warm near-black — text, borders, fills */
@@ -56,17 +62,17 @@ html, body {
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: black;
-  border: 1px solid white;
+  background: #1B1712;
+  border: 1px solid #EFE8D9;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: white;
-  border: 1px solid white;
+  background: #EFE8D9;
+  border: 1px solid #EFE8D9;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #ccc;
+  background: #C9C1B0;
 }
 
 /* Selection styling */
@@ -76,8 +82,8 @@ html, body {
 }
 
 .dark ::selection {
-  background: white;
-  color: black;
+  background: #EFE8D9;
+  color: #1B1712;
 }
 
 /* Custom Animations */
@@ -127,7 +133,7 @@ html, body {
     outline-offset: 2px;
   }
   .dark :focus-visible {
-    outline-color: white;
+    outline-color: #EFE8D9;
   }
 }
 
@@ -145,7 +151,7 @@ html, body {
     box-shadow: var(--lift) var(--lift) 0px 0px #1B1712;
   }
   .dark .brutal-lift:hover {
-    box-shadow: var(--lift) var(--lift) 0px 0px rgba(255, 255, 255, 1);
+    box-shadow: var(--lift) var(--lift) 0px 0px #EFE8D9;
   }
   .brutal-lift:active {
     transform: translate(0, 0);
