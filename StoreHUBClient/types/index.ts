@@ -221,7 +221,7 @@ export interface GitHubReadme {
   content: string;
 }
 
-// Repo autofill (plan/repo-autofill.md) — prefill of the new-component form
+// Repo autofill — prefill of the new-component form
 // from a linked GitHub repo. description/tags may come from an AI (Groq)
 // fallback when GitHub's own data is missing/sparse — descriptionSource and
 // tagsSource say which ("github" | "ai") so the UI can flag it for review.

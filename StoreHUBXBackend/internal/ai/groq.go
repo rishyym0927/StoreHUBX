@@ -1,5 +1,5 @@
 // Package ai provides a narrow, fallback-only Groq client for the repo
-// autofill flow (plan/repo-autofill.md §3): summarizing a missing repo
+// autofill flow: summarizing a missing repo
 // description and suggesting tags when GitHub topics are sparse. It never
 // runs on the common path — callers gate every call behind FallbackEnabled.
 package ai

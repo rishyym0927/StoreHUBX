@@ -1,7 +1,6 @@
 // ComponentDetail.tsx
 import { componentApi, versionApi, userApi, githubApi } from "@/lib/api";
 import { UserProfileCard } from "@/components/common/user-profile-card";
-import { ComponentMetadata } from "@/components/common/component-metadata";
 import { RepositoryInfo } from "@/components/common/repository-info";
 import { ComponentDetailTabs } from "@/components/common/component-detail-tabs";
 import { OwnerActions } from "@/components/common/owner-actions";

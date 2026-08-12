@@ -12,7 +12,7 @@ import (
 // and tags come straight off the repo (RepoInfo) and frameworks are detected
 // from package.json — that's the deterministic Phase 1 path, and it's what
 // runs for the vast majority of repos. AI (Groq) only kicks in as a narrow
-// fallback (plan/repo-autofill.md §3) when GitHub's own data is missing:
+// fallback when GitHub's own data is missing:
 // an empty description, or fewer than 2 topics. Every AI-derived field is
 // tagged with source "ai" (vs "github") so the frontend can flag it for
 // review — the field stays editable either way, this is never auto-applied.

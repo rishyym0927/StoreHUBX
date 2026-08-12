@@ -26,7 +26,7 @@ function GithubMark({ className }: { className?: string }) {
 type Mode = "manual" | "github";
 // "github" fields came straight off the repo (deterministic). "ai" fields
 // are a Groq fallback used only when GitHub's own data was missing/sparse —
-// see plan/repo-autofill.md §3. Either way the field stays fully editable.
+// Either way the field stays fully editable.
 type FieldSource = "manual" | "github" | "ai";
 
 const inputClass =
