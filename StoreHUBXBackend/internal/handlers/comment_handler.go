@@ -125,7 +125,7 @@ func AddComment(c *fiber.Ctx) error {
 	newComment.ID = res.InsertedID.(primitive.ObjectID)
 
 	if comp.OwnerID != "" && comp.OwnerID != uid {
-		notify.Comment(ctx, comp.OwnerID, comp.ID, comp.Name, author.Name)
+		notify.Comment(ctx, comp.OwnerID, comp.ID, comp.Slug, comp.Name, author.Name)
 	}
 
 	return utils.Success(c, fiber.Map{

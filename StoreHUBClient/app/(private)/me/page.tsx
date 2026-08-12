@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/common/protected-route";
 import { ComponentCard } from "@/components/common/component-card";
 import { Pagination } from "@/components/common/pagination";
 import { EmptyState } from "@/components/common/empty-state";
+import { Tabs } from "@/components/common/tabs";
+import { CollectionList } from "@/components/common/collection-list";
 import { useAuth } from "@/lib/store";
 import { userApi, ApiError } from "@/lib/api";
 import { MapPin, Link2, Star, Package, AlertTriangle } from "lucide-react";
@@ -120,7 +122,7 @@ function MeContent() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white dark:bg-black">
+      <div className="min-h-screen">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           {/* Loading State */}
           {loading && (
@@ -261,7 +263,7 @@ function MeContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b-2 border-black dark:border-white">
                   <div>
                     <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter mb-1">
-                      My Components
+                      My Library
                     </h2>
                     {profile.components?.length > 0 && (
                       <p className="text-sm font-mono text-black/60 dark:text-white/60 uppercase tracking-wider font-bold">
@@ -285,39 +287,51 @@ function MeContent() {
                   </div>
                 </div>
 
-                {!profile.components || profile.components.length === 0 ? (
-                  <EmptyState
-                    icon={Package}
-                    title="No Components Yet"
-                    description="Start building your component library by sharing your first UI piece with the community. Let's make something amazing."
-                    size="lg"
-                    action={
-                      <Link
-                        href="/components/new"
-                        className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
-                      >
-                        CREATE YOUR FIRST COMPONENT →
-                      </Link>
-                    }
-                  />
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 gap-6">
-                      {paginatedComponents.map((component) => (
-                        <ComponentCard
-                          key={component.id || component.slug}
-                          component={component}
-                          showOwnerActions={true}
-                          currentUserId={profile.user.id}
-                          onDeleted={handleComponentDeleted}
-                        />
-                      ))}
-                    </div>
+                <Tabs
+                  initial="components"
+                  tabs={[
+                    { id: "components", label: `Components (${profile.components?.length ?? 0})` },
+                    { id: "collections", label: "Collections" },
+                  ]}
+                >
+                  {(active) =>
+                    active === "collections" ? (
+                      <CollectionList ownerId={profile.user.id} canCreate />
+                    ) : !profile.components || profile.components.length === 0 ? (
+                      <EmptyState
+                        icon={Package}
+                        title="No Components Yet"
+                        description="Start building your component library by sharing your first UI piece with the community. Let's make something amazing."
+                        size="lg"
+                        action={
+                          <Link
+                            href="/components/new"
+                            className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                          >
+                            CREATE YOUR FIRST COMPONENT →
+                          </Link>
+                        }
+                      />
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 gap-6">
+                          {paginatedComponents.map((component) => (
+                            <ComponentCard
+                              key={component.id || component.slug}
+                              component={component}
+                              showOwnerActions={true}
+                              currentUserId={profile.user.id}
+                              onDeleted={handleComponentDeleted}
+                            />
+                          ))}
+                        </div>
 
-                    {/* Pagination Controls */}
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-                  </>
-                )}
+                        {/* Pagination Controls */}
+                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                      </>
+                    )
+                  }
+                </Tabs>
               </div>
             </div>
           )}

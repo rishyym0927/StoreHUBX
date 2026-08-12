@@ -7,6 +7,7 @@ import {
   versionApi,
   buildApi,
   githubApi,
+  notificationApi,
   ApiError,
 } from "@/lib/api";
 import type {
@@ -15,6 +16,7 @@ import type {
   BuildJob,
   GitHubRepo,
   ComponentsQueryParams,
+  Notification,
 } from "@/types";
 
 // ========================================
@@ -428,6 +430,92 @@ export function useGitHubBranches(
     ...state,
     refetch: fetchBranches,
   };
+}
+
+// ========================================
+// Notification Hooks
+// ========================================
+
+/**
+ * Hook to fetch the caller's notification feed, polling on an interval.
+ *
+ * Polling (rather than SSE) because the backend exposes a plain list
+ * endpoint; ticks are skipped while the tab is hidden so a backgrounded
+ * tab doesn't keep hitting the API.
+ */
+export function useNotifications(pollIntervalMs = 60000) {
+  const token = useAuth((s) => s.token);
+  const [state, setState] = useState<
+    UseApiState<{ notifications: Notification[]; unreadCount: number }>
+  >({ data: null, loading: true, error: null });
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) {
+      setState({ data: null, loading: false, error: null });
+      return;
+    }
+
+    try {
+      const response = await notificationApi.list(token);
+      setState({ data: response, loading: false, error: null });
+    } catch (err) {
+      const errorMessage =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+          ? err.message
+          : "Failed to fetch notifications";
+      setState({ data: null, loading: false, error: errorMessage });
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      try {
+        const response = await notificationApi.list(token);
+        if (cancelled) return;
+        setState({ data: response, loading: false, error: null });
+      } catch (err) {
+        if (cancelled) return;
+        const errorMessage =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+            ? err.message
+            : "Failed to fetch notifications";
+        setState((prev) => ({ ...prev, loading: false, error: errorMessage }));
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, pollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [token, pollIntervalMs]);
+
+  /**
+   * Apply a local change without waiting for the next poll — read-marking
+   * should feel instant.
+   */
+  const patch = useCallback(
+    (updater: (prev: { notifications: Notification[]; unreadCount: number }) => {
+      notifications: Notification[];
+      unreadCount: number;
+    }) => {
+      setState((prev) => (prev.data ? { ...prev, data: updater(prev.data) } : prev));
+    },
+    []
+  );
+
+  return { ...state, refetch: fetchNotifications, patch };
 }
 
 // ========================================

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as Avatar from "@radix-ui/react-avatar";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 import { useAuth } from "@/lib/store";
 import { GITHUB_LOGIN_URL } from "@/lib/api";
 import { LogOut } from "lucide-react";
@@ -54,6 +55,9 @@ export function Navbar() {
               <div className="hidden sm:block w-px h-6 bg-black dark:bg-white opacity-30"></div>
 
               <div className="flex items-center gap-2">
+                {/* Notifications */}
+                <NotificationBell />
+
                 {/* Profile Link with Avatar */}
                 <Link
                   href="/me"

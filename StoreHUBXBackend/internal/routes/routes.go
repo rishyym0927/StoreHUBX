@@ -95,6 +95,7 @@ func RegisterRoutes(app *fiber.App) {
 	api.Delete("/collections/:id/components/:componentId", handlers.RemoveComponentFromCollection)
 	// OptionalAuth so an owner can see their own private collections
 	app.Get("/users/:id/collections", middleware.OptionalAuth, handlers.ListUserCollections)
+	app.Get("/collections/:id", middleware.OptionalAuth, handlers.GetCollection)
 
 	// Follows (Phase 5) — feeds the notification hooks in AddVersion/AutoDeploy/webhook
 	api.Post("/follows", handlers.CreateFollow)

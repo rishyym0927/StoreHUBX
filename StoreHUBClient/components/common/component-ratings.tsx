@@ -105,6 +105,41 @@ export function ComponentRatings({ slug }: RatingsProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!token || !user) return;
+
+    // Same optimistic-with-rollback shape as handleSubmit — recompute the
+    // aggregates locally rather than refetching, for the reason above.
+    const previousRatings = ratings;
+    const previousAverage = averageRating;
+    const previousCount = ratingCount;
+
+    const remaining = ratings.filter((r) => r.userId !== user.providerId);
+    setRatings(remaining);
+    setRatingCount(remaining.length);
+    setAverageRating(
+      remaining.length ? remaining.reduce((sum, r) => sum + r.score, 0) / remaining.length : 0
+    );
+    setScore(0);
+    setReview("");
+    setIsSubmitting(true);
+
+    try {
+      await ratingApi.delete(slug, token);
+      showToast("Your rating was removed.", "success");
+    } catch (error) {
+      console.error("Failed to delete rating:", error);
+      setRatings(previousRatings);
+      setAverageRating(previousAverage);
+      setRatingCount(previousCount);
+      showToast("Failed to remove rating. Please try again.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const hasOwnRating = !!user && ratings.some((r) => r.userId === user.providerId);
+
   return (
     <div className="mt-12 border-t-4 border-black dark:border-white pt-8">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -125,7 +160,17 @@ export function ComponentRatings({ slug }: RatingsProps) {
             className="w-full min-h-[80px] p-4 font-mono text-sm border-2 border-black dark:border-white bg-transparent focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-y"
             disabled={isSubmitting}
           />
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-3">
+            {hasOwnRating && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="px-4 py-2 font-mono text-sm border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors disabled:opacity-50"
+              >
+                Remove Rating
+              </button>
+            )}
             <button
               type="submit"
               disabled={isSubmitting || score < 1}

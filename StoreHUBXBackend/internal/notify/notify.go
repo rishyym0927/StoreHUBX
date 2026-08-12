@@ -20,7 +20,7 @@ func insert(ctx context.Context, n models.Notification) {
 }
 
 // NewVersion notifies everyone following componentID that a new version was published.
-func NewVersion(ctx context.Context, componentID primitive.ObjectID, componentName, versionStr string) {
+func NewVersion(ctx context.Context, componentID primitive.ObjectID, componentSlug, componentName, versionStr string) {
 	followCol := db.Client.Database("storehub").Collection("follows")
 	cursor, err := followCol.Find(ctx, bson.M{"targetType": models.FollowTargetComponent, "targetId": componentID.Hex()})
 	if err != nil {
@@ -36,21 +36,23 @@ func NewVersion(ctx context.Context, componentID primitive.ObjectID, componentNa
 	msg := fmt.Sprintf("%s published a new version: %s", componentName, versionStr)
 	for _, f := range follows {
 		insert(ctx, models.Notification{
-			UserID:      f.FollowerID,
-			Type:        models.NotificationNewVersion,
-			ComponentID: componentID,
-			Message:     msg,
+			UserID:        f.FollowerID,
+			Type:          models.NotificationNewVersion,
+			ComponentID:   componentID,
+			ComponentSlug: componentSlug,
+			Message:       msg,
 		})
 	}
 }
 
 // Comment notifies a component's owner that someone commented on it.
-func Comment(ctx context.Context, ownerID string, componentID primitive.ObjectID, componentName, commenterName string) {
+func Comment(ctx context.Context, ownerID string, componentID primitive.ObjectID, componentSlug, componentName, commenterName string) {
 	insert(ctx, models.Notification{
-		UserID:      ownerID,
-		Type:        models.NotificationComment,
-		ComponentID: componentID,
-		Message:     fmt.Sprintf("%s commented on %s", commenterName, componentName),
+		UserID:        ownerID,
+		Type:          models.NotificationComment,
+		ComponentID:   componentID,
+		ComponentSlug: componentSlug,
+		Message:       fmt.Sprintf("%s commented on %s", commenterName, componentName),
 	})
 }
 
@@ -64,9 +66,10 @@ func BuildCompleted(ctx context.Context, ownerID string, componentID primitive.O
 		status = "failed"
 	}
 	insert(ctx, models.Notification{
-		UserID:      ownerID,
-		Type:        models.NotificationBuildCompleted,
-		ComponentID: componentID,
-		Message:     fmt.Sprintf("Build %s for %s v%s", status, componentSlug, versionStr),
+		UserID:        ownerID,
+		Type:          models.NotificationBuildCompleted,
+		ComponentID:   componentID,
+		ComponentSlug: componentSlug,
+		Message:       fmt.Sprintf("Build %s for %s v%s", status, componentSlug, versionStr),
 	})
 }

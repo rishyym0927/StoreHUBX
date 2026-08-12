@@ -19,9 +19,10 @@ type Component struct {
 
 	// Social & Analytics — durable counters, kept in sync via $inc rather
 	// than recomputed from an embedded array at read time.
-	LikeCount int  `bson:"likeCount" json:"likeCount"`
-	LikedByMe bool `bson:"-" json:"likedByMe,omitempty"` // response-only, populated per-viewer by GetComponent
-	ViewCount int  `bson:"viewCount" json:"viewCount"`
+	LikeCount    int  `bson:"likeCount" json:"likeCount"`
+	LikedByMe    bool `bson:"-" json:"likedByMe,omitempty"`    // response-only, populated per-viewer by GetComponent
+	FollowedByMe bool `bson:"-" json:"followedByMe,omitempty"` // response-only, populated per-viewer by GetComponent
+	ViewCount    int  `bson:"viewCount" json:"viewCount"`
 
 	AverageRating float64 `bson:"averageRating" json:"averageRating"`
 	RatingCount   int     `bson:"ratingCount" json:"ratingCount"`

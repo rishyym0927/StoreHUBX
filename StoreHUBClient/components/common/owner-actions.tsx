@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
-import { Lock, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 interface OwnerActionsProps {
   ownerId: string;
@@ -47,14 +47,10 @@ export function OwnerActions({
     }
   });
 
+  // Visitors get nothing rather than a "you can't do this" placeholder —
+  // the management panel simply doesn't exist for them.
   if (!isOwner) {
-    return (
-      <div className="text-center py-6">
-        <p className="text-sm font-mono text-black/60 dark:text-white/60 flex items-center justify-center gap-1.5">
-          <Lock className="w-4 h-4" /> Only the component owner can manage this component
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const toggleVisibility = async () => {

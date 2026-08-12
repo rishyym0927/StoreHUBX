@@ -3,18 +3,22 @@
 /* Tailwind v4: class-based dark mode variant */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Theme tokens - Black & Beige Design System */
+/* Theme tokens - Warm Paper Design System
+   ONE paper tone for the whole light mode — page and cards are the same
+   colour. Separation comes from the 2px ink borders, which is how this
+   brutalist system is meant to work; a lighter "card" tone on a darker
+   page just reads as two mismatched backgrounds. Depth, where a surface
+   genuinely needs it, comes from bg-black/5 tints of the ink colour. */
 @theme {
-  --color-bg:        245 241 232;  /* warm paper beige */
-  --color-bg-dark:   0 0 0;        /* pure black */
-  --color-fg:        0 0 0;        /* pure black */
-  --color-fg-dark:   255 255 255;  /* pure white */
-  --radius-xl:       0;            /* sharp corners for brutalist design */
+  --color-page:      #EFE8D9;  /* the single warm paper tone */
+  --color-ink:       #1B1712;  /* warm near-black — text, borders, fills */
+  --radius-xl:       0;        /* sharp corners for brutalist design */
 
-  /* Override Tailwind's built-in "white" so every bg-white/border-white/
-     text-white utility across the app (brutalist borders included) picks
-     up the warm paper tone in light mode without touching each component. */
-  --color-white:     #F5F1E8;
+  /* Override Tailwind's built-ins so every bg-white / border-black /
+     text-white utility already in the app picks up the warm palette in
+     light mode without editing each component. */
+  --color-white:     #EFE8D9;
+  --color-black:     #1B1712;
 }
 
 :root { 
@@ -31,24 +35,24 @@ html, body {
   font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'Courier New', monospace;
 }
 
-/* Scrollbar styling for black/white theme */
+/* Scrollbar styling for the warm paper theme */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F5F1E8;
-  border: 1px solid black;
+  background: #EFE8D9;
+  border: 1px solid #1B1712;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: black;
-  border: 1px solid black;
+  background: #1B1712;
+  border: 1px solid #1B1712;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333;
+  background: #4A4038;
 }
 
 .dark ::-webkit-scrollbar-track {
@@ -67,8 +71,8 @@ html, body {
 
 /* Selection styling */
 ::selection {
-  background: black;
-  color: #F5F1E8;
+  background: #1B1712;
+  color: #EFE8D9;
 }
 
 .dark ::selection {
@@ -119,7 +123,7 @@ html, body {
   /* Item 35 — one crisp, high-contrast focus affordance for keyboard nav,
      matching the site's 2px-border language instead of the browser default. */
   :focus-visible {
-    outline: 2px solid black;
+    outline: 2px solid #1B1712;
     outline-offset: 2px;
   }
   .dark :focus-visible {
@@ -138,7 +142,7 @@ html, body {
   }
   .brutal-lift:hover {
     transform: translate(calc(var(--lift) * -1), calc(var(--lift) * -1));
-    box-shadow: var(--lift) var(--lift) 0px 0px rgba(0, 0, 0, 1);
+    box-shadow: var(--lift) var(--lift) 0px 0px #1B1712;
   }
   .dark .brutal-lift:hover {
     box-shadow: var(--lift) var(--lift) 0px 0px rgba(255, 255, 255, 1);

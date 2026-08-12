@@ -29,6 +29,13 @@ import type {
   GitHubAutofillQueryParams,
   UserProfileResponse,
   OwnerAnalyticsResponse,
+  FollowRequest,
+  NotificationsListResponse,
+  CollectionCreateRequest,
+  CollectionCreateResponse,
+  CollectionsListResponse,
+  CollectionDetailResponse,
+  CollectionMutationResponse,
   ComponentsQueryParams,
   GitHubReposQueryParams,
   GitHubContentsQueryParams,
@@ -639,6 +646,142 @@ export const userApi = {
       { authToken }
     );
     return response;
+  },
+};
+
+// ========================================
+// Follow API (Phase 5)
+// ========================================
+
+/**
+ * Note: a component's follow target id is the component's **id**, not its
+ * slug — the backend fans notifications out on `targetId: <ObjectID hex>`.
+ */
+export const followApi = {
+  /**
+   * Follow a user or component (requires auth). Idempotent server-side.
+   */
+  async follow(target: FollowRequest, authToken: string) {
+    const response = await apiFetch<{ message: string }>("/api/follows", {
+      method: "POST",
+      body: JSON.stringify(target),
+      authToken,
+    });
+    return response;
+  },
+
+  /**
+   * Unfollow a user or component (requires auth)
+   */
+  async unfollow(target: FollowRequest, authToken: string) {
+    const response = await apiFetch<{ message: string }>("/api/follows", {
+      method: "DELETE",
+      body: JSON.stringify(target),
+      authToken,
+    });
+    return response;
+  },
+};
+
+// ========================================
+// Notification API (Phase 5)
+// ========================================
+
+export const notificationApi = {
+  /**
+   * List the caller's notifications (newest first, capped at 50) + unread count
+   */
+  async list(authToken: string) {
+    const response = await apiFetch<NotificationsListResponse>(
+      "/api/notifications",
+      { authToken }
+    );
+    return response;
+  },
+
+  /**
+   * Mark a single notification as read
+   */
+  async markRead(id: string, authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      `/api/notifications/${id}/read`,
+      { method: "POST", authToken }
+    );
+    return response;
+  },
+
+  /**
+   * Mark every unread notification as read
+   */
+  async markAllRead(authToken: string) {
+    const response = await apiFetch<{ message: string }>(
+      "/api/notifications/read-all",
+      { method: "POST", authToken }
+    );
+    return response;
+  },
+};
+
+// ========================================
+// Collection API (Phase 5)
+// ========================================
+
+export const collectionApi = {
+  /**
+   * Create a collection (requires auth)
+   */
+  async create(data: CollectionCreateRequest, authToken: string) {
+    const response = await apiFetch<CollectionCreateResponse>("/api/collections", {
+      method: "POST",
+      body: JSON.stringify(data),
+      authToken,
+    });
+    return response.collection;
+  },
+
+  /**
+   * List a user's collections. Public; pass a token so the owner also sees
+   * their own private ones.
+   */
+  async listForUser(providerId: string, authToken?: string) {
+    const response = await apiFetch<CollectionsListResponse>(
+      `/users/${providerId}/collections`,
+      { authToken }
+    );
+    return response.collections;
+  },
+
+  /**
+   * Get one collection with its components resolved (public)
+   */
+  async get(id: string, authToken?: string) {
+    const response = await apiFetch<CollectionDetailResponse>(
+      `/collections/${id}`,
+      { authToken }
+    );
+    return response;
+  },
+
+  /**
+   * Add a component to a collection (owner-only)
+   */
+  async addComponent(id: string, componentId: string, authToken: string) {
+    const response = await apiFetch<CollectionMutationResponse>(
+      `/api/collections/${id}/components/${componentId}`,
+      { method: "POST", authToken }
+    );
+    return response.collection;
+  },
+
+  /**
+   * Remove a component from a collection (owner-only)
+   */
+  async removeComponent(id: string, componentId: string, authToken: string) {
+    const response = await apiFetch<CollectionMutationResponse>(
+      `/api/collections/${id}/components/${componentId}`,
+      { method: "DELETE", authToken }
+    );
+    return response.collection;
   },
 };
 

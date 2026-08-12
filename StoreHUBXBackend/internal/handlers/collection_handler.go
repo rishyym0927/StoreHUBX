@@ -94,6 +94,66 @@ func ListUserCollections(c *fiber.Ctx) error {
 	})
 }
 
+// GET /collections/:id (public; OptionalAuth reveals the caller's own private collection)
+//
+// Returns the collection together with its components resolved, since
+// Collection.ComponentIDs is only a list of ObjectIDs and the client has no
+// other way to turn those into anything renderable.
+func GetCollection(c *fiber.Ctx) error {
+	collID, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return utils.Error(c, 400, "invalid collection id")
+	}
+	viewerID, _ := c.Locals("user_id").(string)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var collection models.Collection
+	col := db.Client.Database("storehub").Collection("collections")
+	if err := col.FindOne(ctx, bson.M{"_id": collID}).Decode(&collection); err != nil {
+		return utils.Error(c, 404, "collection not found")
+	}
+
+	// A private collection is a 404 rather than a 403 for non-owners, matching
+	// how GetComponent hides private components.
+	if collection.Visibility == "private" && viewerID != collection.OwnerID {
+		return utils.Error(c, 404, "collection not found")
+	}
+
+	components := make([]models.Component, 0)
+	if len(collection.ComponentIDs) > 0 {
+		// A component can be added to a collection and then made private, so
+		// re-apply the per-viewer visibility rule here instead of trusting
+		// membership — the owner/collaborators still see their own.
+		filter := bson.M{"_id": bson.M{"$in": collection.ComponentIDs}}
+		if viewerID == "" {
+			filter["visibility"] = bson.M{"$ne": "private"}
+		} else {
+			filter["$or"] = []bson.M{
+				{"visibility": bson.M{"$ne": "private"}},
+				{"ownerId": viewerID},
+				{"collaborators": viewerID},
+			}
+		}
+
+		compCol := db.Client.Database("storehub").Collection("components")
+		cursor, err := compCol.Find(ctx, filter)
+		if err != nil {
+			return utils.Error(c, 500, "database error")
+		}
+		defer cursor.Close(ctx)
+		if err := cursor.All(ctx, &components); err != nil {
+			return utils.Error(c, 500, "failed to decode components")
+		}
+	}
+
+	return utils.Success(c, fiber.Map{
+		"collection": collection,
+		"components": components,
+	})
+}
+
 // POST /api/collections/:id/components/:componentId (protected, owner only)
 func AddComponentToCollection(c *fiber.Ctx) error {
 	uid, ok := c.Locals("user_id").(string)

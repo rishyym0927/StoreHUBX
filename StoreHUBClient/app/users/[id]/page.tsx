@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { userApi, ApiError } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
 import { ComponentCard } from "@/components/common/component-card";
+import { CollectionList } from "@/components/common/collection-list";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { useAuth } from "@/lib/store";
 import { AlertTriangle, Package } from "lucide-react";
@@ -48,7 +49,7 @@ export default function UserProfile() {
   }, [userId, token]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
+    <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Loading State */}
         {loading && (
@@ -154,6 +155,12 @@ export default function UserProfile() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Collections Section — private ones are filtered server-side */}
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-6">Collections</h2>
+              <CollectionList ownerId={userId} />
             </div>
           </div>
         )}

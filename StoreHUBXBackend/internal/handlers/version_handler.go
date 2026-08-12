@@ -71,7 +71,7 @@ func AddVersion(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to insert version")
 	}
 	version.ID = res.InsertedID.(primitive.ObjectID)
-	notify.NewVersion(ctx, comp.ID, comp.Name, version.Version)
+	notify.NewVersion(ctx, comp.ID, comp.Slug, comp.Name, version.Version)
 
 	// Build cache: reuse another version's output if it was already built
 	// successfully from the exact same commit.
@@ -203,7 +203,7 @@ func createVersionAndBuild(ctx context.Context, comp *models.Component, commitSH
 		return nil, primitive.NilObjectID, &deployError{500, "failed to create version"}
 	}
 	newVersion.ID = insertResult.InsertedID.(primitive.ObjectID)
-	notify.NewVersion(ctx, comp.ID, comp.Name, versionNumber)
+	notify.NewVersion(ctx, comp.ID, comp.Slug, comp.Name, versionNumber)
 
 	repo := comp.RepoLink.AsBuildRepo()
 	repo.Commit = commitSHA

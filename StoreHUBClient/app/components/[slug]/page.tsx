@@ -1,4 +1,5 @@
 // ComponentDetail.tsx
+import Link from "next/link";
 import { componentApi, versionApi, userApi, githubApi } from "@/lib/api";
 import { UserProfileCard } from "@/components/common/user-profile-card";
 import { RepositoryInfo } from "@/components/common/repository-info";
@@ -6,12 +7,15 @@ import { ComponentDetailTabs } from "@/components/common/component-detail-tabs";
 import { OwnerActions } from "@/components/common/owner-actions";
 import { InstallCommand } from "@/components/common/install-command";
 import { LikeButton } from "@/components/common/like-button";
+import { FollowButton } from "@/components/common/follow-button";
+import { AddToCollection } from "@/components/common/add-to-collection";
 import { ComponentComments } from "@/components/common/component-comments";
 import { ComponentRatings } from "@/components/common/component-ratings";
 import { RatingStars } from "@/components/common/rating-stars";
 import { Badge } from "@/components/common/badge";
+import { UserAvatar } from "@/components/common/user-avatar";
 import { formatDate } from "@/lib/api-utils";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Eye, GitBranch, Lock } from "lucide-react";
 
 import type {
   Component,
@@ -29,12 +33,12 @@ export default async function ComponentDetail({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  
+
   // Fetch component data with error handling
   let comp: Component;
   let versions: ComponentVersion[] = [];
   let ownerProfile: { user: User; components: Component[] } | null = null;
-  
+
   try {
     comp = await componentApi.get(slug);
   } catch (error) {
@@ -91,43 +95,144 @@ export default async function ComponentDetail({
     if (readmeResult.status === "fulfilled") readme = readmeResult.value.content;
   }
 
+  const chips = [
+    ...(comp.frameworks ?? []).map((v) => ({ value: v, variant: "framework" as const })),
+    ...(comp.tags ?? []).map((v) => ({ value: v, variant: "tag" as const })),
+  ];
+
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 sm:gap-12">
-          {/* Left Column - User & Component Info */}
-          <div className="lg:col-span-1 space-y-6 min-w-0">
-            {/* Component Title and Description */}
-            <div className="space-y-4">
-              <div className="border-b-2 border-black dark:border-white pb-4 flex items-start justify-between">
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-3 flex-wrap">
-                  {comp.name}
-                  {comp.visibility === "private" && (
-                    <span className="text-xs px-2 py-1 border-2 border-black dark:border-white font-mono font-bold uppercase align-middle">
-                      Private
-                    </span>
-                  )}
-                </h1>
-                <LikeButton
-                   slug={comp.slug}
-                   initialLikeCount={comp.likeCount || 0}
-                   initialLikedByMe={comp.likedByMe || false}
-                />
+    <div className="space-y-8">
+      {/* ---- Header: everything you need to identify the component ---- */}
+      <header className="border-2 border-black dark:border-white bg-white dark:bg-black p-6 sm:p-8 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 space-y-3">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-3 flex-wrap">
+              {comp.name}
+              {comp.visibility === "private" && (
+                <span className="text-xs px-2 py-1 border-2 border-black dark:border-white font-mono font-bold uppercase inline-flex items-center gap-1.5">
+                  <Lock className="w-3 h-3" /> Private
+                </span>
+              )}
+            </h1>
+
+            {comp.description && (
+              <p className="text-sm font-mono text-black/60 dark:text-white/60 leading-relaxed max-w-2xl">
+                {comp.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            <FollowButton
+              componentId={comp.id}
+              ownerId={comp.ownerId}
+              initialFollowedByMe={comp.followedByMe || false}
+            />
+            <LikeButton
+              slug={comp.slug}
+              initialLikeCount={comp.likeCount || 0}
+              initialLikedByMe={comp.likedByMe || false}
+            />
+          </div>
+        </div>
+
+        {/* Byline — owner, rating, and the two counts worth seeing up front */}
+        <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs font-mono text-black/60 dark:text-white/60">
+          {ownerProfile && (
+            <Link
+              href={`/users/${comp.ownerId}`}
+              className="flex items-center gap-2 text-black dark:text-white hover:underline"
+            >
+              <UserAvatar
+                src={ownerProfile.user.avatarUrl}
+                name={ownerProfile.user.username || ownerProfile.user.name}
+                size="sm"
+              />
+              <span className="font-bold">
+                {ownerProfile.user.username || ownerProfile.user.name}
+              </span>
+            </Link>
+          )}
+
+          {!!comp.ratingCount && (
+            <RatingStars rating={comp.averageRating ?? 0} count={comp.ratingCount} size="sm" />
+          )}
+
+          <span className="flex items-center gap-1.5">
+            <GitBranch className="w-3.5 h-3.5" />
+            {versions.length} version{versions.length !== 1 ? "s" : ""}
+          </span>
+
+          <span className="flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5" />
+            {comp.viewCount || 0} view{comp.viewCount !== 1 ? "s" : ""}
+          </span>
+
+          <span>Updated {formatDate(comp.updatedAt)}</span>
+        </div>
+
+        {chips.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            {chips.map((chip) => (
+              <Badge key={`${chip.variant}-${chip.value}`} variant={chip.variant}>
+                {chip.value}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {/* ---- Body: content first, supporting detail in a sticky rail ---- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-10 min-w-0">
+          <ComponentDetailTabs component={comp} versions={versions} readme={readme} />
+          <ComponentRatings slug={comp.slug} />
+          <ComponentComments slug={comp.slug} />
+        </div>
+
+        <aside className="space-y-6 min-w-0 lg:sticky lg:top-6 lg:self-start">
+          <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-5">
+            <AddToCollection componentId={comp.id} />
+
+            <InstallCommand repoLink={comp.repoLink} />
+
+            {isLinked && (
+              <RepositoryInfo
+                repoLink={comp.repoLink!}
+                repoInfo={repoInfo}
+                languages={languages}
+                latestCommit={latestCommit}
+                contributors={contributors}
+              />
+            )}
+
+            {/* Facts — the low-frequency metadata, kept out of the way */}
+            <dl className="space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-black/60 dark:text-white/60">License</dt>
+                <dd className="font-bold truncate">{comp.license || "None"}</dd>
               </div>
-              
-              {comp.description && (
-                <p className="text-sm font-mono text-black/60 dark:text-white/60 leading-relaxed">
-                  {comp.description}
-                </p>
-              )}
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-black/60 dark:text-white/60">Repository</dt>
+                <dd className="font-bold">
+                  {isLinked ? (
+                    <span className="text-green-700 dark:text-green-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Linked
+                    </span>
+                  ) : (
+                    <span className="text-red-700 dark:text-red-400">Not linked</span>
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-black/60 dark:text-white/60">Created</dt>
+                <dd className="font-bold">{formatDate(comp.createdAt)}</dd>
+              </div>
+            </dl>
+          </div>
 
-              {!!comp.ratingCount && (
-                <RatingStars rating={comp.averageRating ?? 0} count={comp.ratingCount} size="md" />
-              )}
-            </div>
-
-            {/* Owner Profile Card */}
-            {ownerProfile && (
+          {ownerProfile && ownerProfile.components.length > 0 && (
+            <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5">
               <UserProfileCard
                 ownerId={comp.ownerId}
                 ownerName={ownerProfile.user.name}
@@ -135,155 +240,17 @@ export default async function ComponentDetail({
                 ownerAvatar={ownerProfile.user.avatarUrl}
                 otherComponents={ownerProfile.components}
               />
-            )}
-
-            {/* Quick Stats */}
-            <div className="pb-4 border-b border-black dark:border-white">
-              <div className="text-xs font-mono text-black/60 dark:text-white/60 mb-3 uppercase tracking-wider">
-                Quick Stats
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
-                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">{versions.length}</div>
-                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
-                    Version{versions.length !== 1 ? 's' : ''}
-                  </div>
-                </div>
-                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
-                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">
-                    {comp.frameworks?.length || 0}
-                  </div>
-                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
-                    Frameworks
-                  </div>
-                </div>
-                <div className="text-center p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5 overflow-hidden">
-                  <div className="text-xl sm:text-2xl font-bold font-mono truncate">
-                    {comp.viewCount || 0}
-                  </div>
-                  <div className="text-[10px] sm:text-xs font-mono text-black/60 dark:text-white/60 mt-1 truncate">
-                    Views
-                  </div>
-                </div>
-              </div>
             </div>
+          )}
 
-            {/* Clone Repository Command */}
-            <InstallCommand repoLink={comp.repoLink} />
-
-            {/* Owner Actions (only visible to owner) */}
-            <div className="pt-4 border-t-2 border-black dark:border-white">
-              <OwnerActions
-                ownerId={comp.ownerId}
-                componentSlug={comp.slug}
-                isLinked={!!(comp.repoLink && comp.repoLink.owner && comp.repoLink.repo)}
-                visibility={comp.visibility}
-                collaborators={comp.collaborators}
-              />
-            </div>
-          </div>
-
-          {/* Right Column - Tabs with Versions, Preview & Builds */}
-          <div className="lg:col-span-3 space-y-8 min-w-0">
-            {/* Component Details Card */}
-            <div className="border-2 border-black dark:border-white p-6 bg-white dark:bg-black">
-              <h2 className="text-xl font-bold mb-4 pb-3 border-b border-black dark:border-white">
-                Component Details
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Details Column */}
-                <div className="space-y-4 min-w-0">
-                  {/* Frameworks */}
-                  {comp.frameworks && comp.frameworks.length > 0 && (
-                    <div>
-                      <div className="text-xs font-mono text-black/60 dark:text-white/60 mb-2 uppercase tracking-wider">
-                        Frameworks
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {comp.frameworks.map((fw) => (
-                          <Badge key={fw} variant="framework">{fw}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tags */}
-                  {comp.tags && comp.tags.length > 0 && (
-                    <div>
-                      <div className="text-xs font-mono text-black/60 dark:text-white/60 mb-2 uppercase tracking-wider">
-                        Tags
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {comp.tags.map((tag) => (
-                          <Badge key={tag} variant="tag">{tag}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* License & Status */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-black/60 dark:text-white/60">License</span>
-                      <span className="font-mono font-bold">{comp.license || "None"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-black/60 dark:text-white/60">Status</span>
-                      {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo ? (
-                        <span className="font-mono font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Linked
-                        </span>
-                      ) : (
-                        <span className="font-mono font-bold text-red-600 dark:text-red-400">
-                          Not Linked
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Details Column */}
-                <div className="space-y-4 min-w-0">
-                  {/* Repository Info */}
-                  {comp.repoLink && comp.repoLink.owner && comp.repoLink.repo && (
-                    <RepositoryInfo
-                      repoLink={comp.repoLink}
-                      repoInfo={repoInfo}
-                      languages={languages}
-                      latestCommit={latestCommit}
-                      contributors={contributors}
-                    />
-                  )}
-
-                  {/* Dates */}
-                  <div className="space-y-2 pt-4 border-t border-black/20 dark:border-white/20">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-black/60 dark:text-white/60">Created</span>
-                      <span className="font-mono font-bold">
-                        {formatDate(comp.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-black/60 dark:text-white/60">Updated</span>
-                      <span className="font-mono font-bold">
-                        {formatDate(comp.updatedAt)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tabs Section */}
-            <ComponentDetailTabs component={comp} versions={versions} readme={readme} />
-
-            {/* Reviews Section */}
-            <ComponentRatings slug={comp.slug} />
-
-            {/* Discussions Section */}
-            <ComponentComments slug={comp.slug} />
-          </div>
-        </div>
+          <OwnerActions
+            ownerId={comp.ownerId}
+            componentSlug={comp.slug}
+            isLinked={isLinked}
+            visibility={comp.visibility}
+            collaborators={comp.collaborators}
+          />
+        </aside>
       </div>
     </div>
   );

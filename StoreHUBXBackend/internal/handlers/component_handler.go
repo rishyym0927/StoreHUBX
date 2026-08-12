@@ -230,10 +230,10 @@ func GetComponent(c *fiber.Ctx) error {
 		_, _ = col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{"$inc": bson.M{"viewCount": 1}})
 	}
 
-	// likedByMe is per-viewer, so the cached blob (shared across all
-	// anonymous viewers) can only be served when there's no authenticated
-	// viewer to compute it for. Private components need a live
-	// authorization check regardless, so they never use the cache either.
+	// likedByMe/followedByMe are per-viewer, so the cached blob (shared
+	// across all anonymous viewers) can only be served when there's no
+	// authenticated viewer to compute them for. Private components need a
+	// live authorization check regardless, so they never use the cache either.
 	cacheKey := componentSlugCacheKey(slug)
 	if uid == "" {
 		if cached, hit := cache.Get(ctx, cacheKey); hit {
@@ -260,6 +260,16 @@ func GetComponent(c *fiber.Ctx) error {
 		interactionCol := db.Client.Database("storehub").Collection("interactions")
 		count, _ := interactionCol.CountDocuments(ctx, bson.M{"componentId": comp.ID, "userId": uid, "type": models.InteractionLike})
 		comp.LikedByMe = count > 0
+
+		// Follows key off the component's ObjectID hex, not its slug — see
+		// notify.NewVersion, which fans out on the same targetId.
+		followCol := db.Client.Database("storehub").Collection("follows")
+		followCount, _ := followCol.CountDocuments(ctx, bson.M{
+			"followerId": uid,
+			"targetType": models.FollowTargetComponent,
+			"targetId":   comp.ID.Hex(),
+		})
+		comp.FollowedByMe = followCount > 0
 	}
 
 	if comp.Visibility != "private" && uid == "" {

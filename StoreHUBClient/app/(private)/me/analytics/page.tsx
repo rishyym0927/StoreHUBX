@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+      <div className="min-h-screen text-black dark:text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-10">
           <div className="flex items-center justify-between gap-4 flex-wrap border-b-2 border-black dark:border-white pb-6">
             <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter">

@@ -33,6 +33,7 @@ export interface Component {
   ownerId: string;
   repoLink?: RepoLink | null;
   likedByMe?: boolean;
+  followedByMe?: boolean;
   likeCount?: number;
   viewCount?: number;
   averageRating?: number;
@@ -145,6 +146,9 @@ export interface Notification {
   userId: string;
   type: NotificationType;
   componentId?: string;
+  // Denormalized by the backend so the feed can link straight to the
+  // component. Absent on rows written before that field existed.
+  componentSlug?: string;
   message: string;
   read: boolean;
   createdAt: string;
@@ -383,6 +387,15 @@ export interface CollectionCreateResponse {
 
 export interface CollectionsListResponse {
   collections: Collection[];
+}
+
+export interface CollectionDetailResponse {
+  collection: Collection;
+  components: Component[];
+}
+
+export interface CollectionMutationResponse {
+  collection: Collection;
 }
 
 export interface FollowRequest {
