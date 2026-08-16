@@ -261,6 +261,12 @@ html, body {
     animation: none !important;
     opacity: 1 !important;
   }
+  /* The marquee loops forever, so it's the most disruptive of the lot. Its
+     content is duplicated and overflow-hidden, so stopping it just leaves a
+     static strip. */
+  .animate-marquee {
+    animation: none !important;
+  }
   .brutal-lift,
   .brutal-scale,
   *, *::before, *::after {
