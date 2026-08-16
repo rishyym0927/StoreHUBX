@@ -45,6 +45,7 @@ import type {
   GitHubLatestCommitQueryParams,
   GitHubReadmeQueryParams,
 } from "@/types";
+import { onUnauthorized } from "@/lib/auth-events";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 
@@ -113,6 +114,13 @@ async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
         }
       } catch {
         // Use raw text
+      }
+
+      // A 401 on a request we *did* authenticate means the stored JWT is
+      // expired or was signed with a since-rotated secret. Drop it centrally
+      // so the app stops replaying a dead token on every page.
+      if (res.status === 401 && authToken) {
+        onUnauthorized();
       }
 
       throw new ApiError(res.status, res.statusText, errorMessage);
