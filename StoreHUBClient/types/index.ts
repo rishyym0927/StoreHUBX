@@ -422,6 +422,7 @@ export interface ComponentsQueryParams {
   q?: string;
   framework?: string;
   tags?: string;
+  sort?: string;
   page?: number;
   limit?: number;
 }

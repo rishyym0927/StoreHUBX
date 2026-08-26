@@ -24,12 +24,22 @@ export default function ComponentsPage() {
 // as chips also avoids the typo/casing problem free text invites.
 const FRAMEWORKS = ["react", "nextjs", "vue", "svelte", "angular", "solid"];
 
+// "newest" is the backend default and is represented as "" in state/URL (the
+// param is omitted entirely). Normalize an explicit "newest" read from the
+// URL down to "" so the dropdown, hasActiveFilters, and the outgoing query
+// params all agree.
+const readSort = (params: URLSearchParams) => {
+  const sort = params.get("sort") || "";
+  return sort === "newest" ? "" : sort;
+};
+
 function ComponentsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [frameworkFilter, setFrameworkFilter] = useState(searchParams.get("framework") || "");
   const [tagsFilter, setTagsFilter] = useState(searchParams.get("tags") || "");
+  const [sortFilter, setSortFilter] = useState(readSort(searchParams));
 
   // Keep the inputs in sync with the URL on browser back/forward navigation,
   // where the URL changes without the user touching these fields directly.
@@ -37,6 +47,7 @@ function ComponentsPageContent() {
     setSearchQuery(searchParams.get("q") || "");
     setFrameworkFilter(searchParams.get("framework") || "");
     setTagsFilter(searchParams.get("tags") || "");
+    setSortFilter(readSort(searchParams));
   }, [searchParams]);
 
   // Get page and limit from URL
@@ -48,9 +59,10 @@ function ComponentsPageContent() {
     q: searchQuery || undefined,
     framework: frameworkFilter || undefined,
     tags: tagsFilter || undefined,
+    sort: sortFilter || undefined,
     page: currentPage,
     limit: itemsPerPage,
-  }), [searchQuery, frameworkFilter, tagsFilter, currentPage, itemsPerPage]);
+  }), [searchQuery, frameworkFilter, tagsFilter, sortFilter, currentPage, itemsPerPage]);
 
   // Fetch components with auto-loading state
   const { data, loading, error, refetch } = useComponents(queryParams);
@@ -62,11 +74,14 @@ function ComponentsPageContent() {
   // Single place that turns filter state into a URL. Filters always reset to
   // page 1, since results shift underneath the old page number.
   const pushFilters = useCallback(
-    (next: { q?: string; framework?: string; tags?: string }) => {
+    (next: { q?: string; framework?: string; tags?: string; sort?: string }) => {
       const params = new URLSearchParams();
       if (next.q) params.set("q", next.q);
       if (next.framework) params.set("framework", next.framework);
       if (next.tags) params.set("tags", next.tags);
+      // "newest" is the backend default, so omit it entirely to keep existing
+      // URLs/behavior unaffected.
+      if (next.sort && next.sort !== "newest") params.set("sort", next.sort);
       params.set("page", "1");
       params.set("limit", String(itemsPerPage));
       router.push(`/components?${params.toString()}`);
@@ -83,22 +98,29 @@ function ComponentsPageContent() {
     if (searchQuery === urlQ && tagsFilter === urlTags) return;
 
     const timer = setTimeout(() => {
-      pushFilters({ q: searchQuery, framework: frameworkFilter, tags: tagsFilter });
+      pushFilters({ q: searchQuery, framework: frameworkFilter, tags: tagsFilter, sort: sortFilter });
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, tagsFilter, frameworkFilter, searchParams, pushFilters]);
+  }, [searchQuery, tagsFilter, frameworkFilter, sortFilter, searchParams, pushFilters]);
 
   // Chips are a deliberate click, so they apply immediately.
   const toggleFramework = (framework: string) => {
     const next = frameworkFilter === framework ? "" : framework;
     setFrameworkFilter(next);
-    pushFilters({ q: searchQuery, framework: next, tags: tagsFilter });
+    pushFilters({ q: searchQuery, framework: next, tags: tagsFilter, sort: sortFilter });
+  };
+
+  // A dropdown selection is also a deliberate action, so it applies immediately.
+  const handleSortChange = (sort: string) => {
+    setSortFilter(sort);
+    pushFilters({ q: searchQuery, framework: frameworkFilter, tags: tagsFilter, sort });
   };
 
   const handleClearFilters = () => {
     setSearchQuery("");
     setFrameworkFilter("");
     setTagsFilter("");
+    setSortFilter("");
     router.push("/components");
   };
 
@@ -109,7 +131,7 @@ function ComponentsPageContent() {
     router.push(`/components?${params.toString()}`);
   };
 
-  const hasActiveFilters = searchQuery || frameworkFilter || tagsFilter;
+  const hasActiveFilters = searchQuery || frameworkFilter || tagsFilter || sortFilter;
 
   const { user } = useAuth();
   const loggedInUserId = user?.id;
@@ -186,6 +208,18 @@ function ComponentsPageContent() {
               </button>
             );
           })}
+
+          <select
+            aria-label="Sort components"
+            value={sortFilter}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="brutal-scale border-2 border-black dark:border-white bg-white dark:bg-black px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider focus:outline-none cursor-pointer"
+          >
+            <option value="">Newest</option>
+            <option value="rating">Top Rated</option>
+            <option value="likes">Most Liked</option>
+            <option value="views">Most Viewed</option>
+          </select>
 
           {hasActiveFilters && (
             <button
