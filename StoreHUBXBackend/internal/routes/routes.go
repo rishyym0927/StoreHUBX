@@ -84,6 +84,10 @@ func RegisterRoutes(app *fiber.App) {
 
 	//phase 4.4
 	api.Post("/components/:slug/versions/:version/build", handlers.EnqueueBuild)
+	// Short-lived token for embedding as ?token= on the public /preview
+	// redirect, since an iframe src can't carry an Authorization header
+	// (needed for an owner/collaborator to view a PRIVATE component's preview).
+	api.Get("/components/:slug/versions/:version/preview-token", handlers.GetPreviewToken)
 
 	// Authenticated profile
 	api.Get("/me", handlers.GetProfile)
