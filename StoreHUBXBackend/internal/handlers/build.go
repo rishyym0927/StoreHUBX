@@ -70,6 +70,12 @@ func EnqueueBuild(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+
+	uid, _ := c.Locals("user_id").(string)
+	if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+		return utils.Error(c, 403, "not authorized to build this component")
+	}
+
 	if comp.RepoLink.Owner == "" || comp.RepoLink.Repo == "" {
 		return utils.Error(c, 400, "component is not linked to a GitHub repo")
 	}
@@ -79,8 +85,6 @@ func EnqueueBuild(c *fiber.Ctx) error {
 	if err := verCol.FindOne(ctx, bson.M{"componentId": comp.ID, "version": versionStr}).Decode(&ver); err != nil {
 		return utils.Error(c, 404, "version not found")
 	}
-
-	uid, _ := c.Locals("user_id").(string)
 
 	// Build cache: reuse another version's output if it was already built
 	// successfully from the exact same commit.
@@ -129,6 +133,22 @@ func GetBuild(c *fiber.Ctx) error {
 		return utils.Error(c, 404, "build not found")
 	}
 
+	// The job has no slug in its path, so look up the owning component by
+	// ComponentID to apply the same visibility gate as GetComponent. Fail
+	// closed: if the component can't be found (including a lookup error),
+	// don't leak the job.
+	var comp models.Component
+	if err := db.Client.Database("storehub").Collection("components").
+		FindOne(ctx, bson.M{"_id": job.ComponentID}).Decode(&comp); err != nil {
+		return utils.Error(c, 404, "build not found")
+	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "build not found")
+		}
+	}
+
 	return utils.Success(c, fiber.Map{"build": job})
 }
 
@@ -142,6 +162,17 @@ func ListBuildsForVersion(c *fiber.Ctx) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
+		return utils.Error(c, 404, "component not found")
+	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
+	}
 
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest (latest attempt) first

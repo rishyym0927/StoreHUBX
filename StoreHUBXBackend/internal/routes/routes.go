@@ -25,16 +25,19 @@ func RegisterRoutes(app *fiber.App) {
 	app.Get("/components", handlers.GetAllComponents)
 	// OptionalAuth so an owner/collaborator can view their own private component
 	app.Get("/components/:slug", middleware.OptionalAuth, handlers.GetComponent)
-	app.Get("/components/:slug/versions", handlers.GetComponentVersions)
-	app.Get("/components/:slug/comments", handlers.GetComments)
-	app.Get("/components/:slug/ratings", handlers.ListRatings)
+	// OptionalAuth on all of these so the private-component visibility gate
+	// they each apply can tell an owner/collaborator apart from an anonymous
+	// caller, without rejecting anonymous requests to public components.
+	app.Get("/components/:slug/versions", middleware.OptionalAuth, handlers.GetComponentVersions)
+	app.Get("/components/:slug/comments", middleware.OptionalAuth, handlers.GetComments)
+	app.Get("/components/:slug/ratings", middleware.OptionalAuth, handlers.ListRatings)
 
 	// Builds (public reads)
-	app.Get("/builds/:id", handlers.GetBuild)
-	app.Get("/components/:slug/versions/:version/builds", handlers.ListBuildsForVersion)
+	app.Get("/builds/:id", middleware.OptionalAuth, handlers.GetBuild)
+	app.Get("/components/:slug/versions/:version/builds", middleware.OptionalAuth, handlers.ListBuildsForVersion)
 
 	// Preview (public access)
-	app.Get("/preview/:slug/:version", handlers.RedirectPreview)
+	app.Get("/preview/:slug/:version", middleware.OptionalAuth, handlers.RedirectPreview)
 
 	// GitHub push webhook (public - authenticated via HMAC signature, Phase 4.12)
 	app.Post("/webhooks/github/:slug", handlers.HandleGitHubWebhook)

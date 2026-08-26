@@ -52,6 +52,12 @@ func GetComments(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
+	}
 
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
 	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
@@ -97,6 +103,11 @@ func AddComment(c *fiber.Ctx) error {
 	comp, err := findComponentBySlug(ctx, slug)
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
+	}
+	if comp.Visibility == "private" {
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
 	}
 
 	userCol := db.Client.Database("storehub").Collection("users")

@@ -43,6 +43,12 @@ func AddVersion(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+
+	uid, _ := c.Locals("user_id").(string)
+	if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+		return utils.Error(c, 403, "not authorized to add a version to this component")
+	}
+
 	if comp.RepoLink.Owner == "" || comp.RepoLink.Repo == "" {
 		return utils.Error(c, 400, "component must be linked to a GitHub repository before adding versions")
 	}
@@ -59,7 +65,6 @@ func AddVersion(c *fiber.Ctx) error {
 		return utils.Error(c, 409, fmt.Sprintf("version already exists for commit %s (version: %s)", version.CommitSHA[:7], existing.Version))
 	}
 
-	uid, _ := c.Locals("user_id").(string)
 	version.ComponentID = comp.ID
 	version.CreatedBy = uid
 	version.CreatedAt = time.Now()
@@ -108,6 +113,12 @@ func GetComponentVersions(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
+	}
 
 	verCol := db.Client.Database("storehub").Collection("component_versions")
 	cursor, err := verCol.Find(ctx, bson.M{"componentId": comp.ID})
@@ -149,6 +160,10 @@ func AutoDeploy(c *fiber.Ctx) error {
 	}
 
 	uid, _ := c.Locals("user_id").(string)
+	if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+		return utils.Error(c, 403, "not authorized to deploy this component")
+	}
+
 	newVersion, jobID, deployErr := createVersionAndBuild(ctx, &comp, payload.CommitSHA, payload.Version, payload.Changelog, uid)
 	if deployErr != nil {
 		return utils.Error(c, deployErr.statusCode, deployErr.message)

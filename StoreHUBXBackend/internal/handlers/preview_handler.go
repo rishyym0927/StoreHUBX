@@ -9,7 +9,6 @@ import (
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -24,18 +23,21 @@ func RedirectPreview(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	colComp := db.Client.Database("storehub").Collection("components")
-	var comp struct {
-		ID primitive.ObjectID `bson:"_id"`
-	}
-	if err := colComp.FindOne(ctx, bson.M{"slug": slug}).Decode(&comp); err != nil {
+	comp, err := findComponentBySlug(ctx, slug)
+	if err != nil {
 		return utils.Error(c, 404, "component not found")
+	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
 	}
 
 	jobCol := db.Client.Database("storehub").Collection("build_jobs")
 	opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	var job models.BuildJob
-	err := jobCol.FindOne(ctx, bson.M{
+	err = jobCol.FindOne(ctx, bson.M{
 		"componentId": comp.ID,
 		"version":     ver,
 		"status":      models.BuildSuccess,

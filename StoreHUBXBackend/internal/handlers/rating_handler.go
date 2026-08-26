@@ -104,6 +104,11 @@ func UpsertRating(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
 	}
+	if comp.Visibility == "private" {
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
+	}
 
 	userCol := db.Client.Database("storehub").Collection("users")
 	var author models.User
@@ -161,6 +166,12 @@ func ListRatings(c *fiber.Ctx) error {
 	comp, err := findComponentBySlug(ctx, slug)
 	if err != nil {
 		return utils.Error(c, 404, "component not found")
+	}
+	if comp.Visibility == "private" {
+		uid, _ := c.Locals("user_id").(string)
+		if uid == "" || (uid != comp.OwnerID && !contains(comp.Collaborators, uid)) {
+			return utils.Error(c, 404, "component not found")
+		}
 	}
 
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
