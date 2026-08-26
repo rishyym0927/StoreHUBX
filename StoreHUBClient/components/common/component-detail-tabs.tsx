@@ -93,7 +93,12 @@ export function ComponentDetailTabs({ component, versions, readme }: ComponentDe
                   : 'No versions published yet'}
               </p>
             </div>
-            <VersionsDisplay slug={component.slug} versions={versions} />
+            <VersionsDisplay
+              slug={component.slug}
+              versions={versions}
+              ownerId={component.ownerId}
+              collaborators={component.collaborators}
+            />
           </div>
         )}
 

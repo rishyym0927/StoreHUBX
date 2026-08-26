@@ -22,9 +22,13 @@ export type VersionDoc = {
 export function VersionsDisplay({
   slug,
   versions,
+  ownerId,
+  collaborators,
 }: {
   slug: string;
   versions: VersionDoc[];
+  ownerId?: string;
+  collaborators?: string[];
 }) {
   const [selectedVersion, setSelectedVersion] = useState<string>(versions[0]?.version || "");
 
@@ -69,7 +73,7 @@ export function VersionsDisplay({
       )}
 
       {/* Show single version */}
-      <VersionsList slug={slug} versions={[currentVersion]} />
+      <VersionsList slug={slug} versions={[currentVersion]} ownerId={ownerId} collaborators={collaborators} />
     </div>
   );
 }
@@ -77,9 +81,13 @@ export function VersionsDisplay({
 export function VersionsList({
   slug,
   versions,
+  ownerId,
+  collaborators,
 }: {
   slug: string;
   versions: VersionDoc[];
+  ownerId?: string;
+  collaborators?: string[];
 }) {
   if (!versions || versions.length === 0) {
     return null;
@@ -146,7 +154,7 @@ export function VersionsList({
             <div className="p-4 sm:p-6">
               <Tabs tabs={tabs} initial={initialTab}>
                 {(active) => {
-                  if (active === "builds") return <VersionBuilds slug={slug} version={v.version} />;
+                  if (active === "builds") return <VersionBuilds slug={slug} version={v.version} ownerId={ownerId} collaborators={collaborators} />;
                   if (active === "readme") return <Markdown content={v.readme} />;
                   if (active === "usage") return <Markdown content={v.usage} />;
                   if (active === "preview") {

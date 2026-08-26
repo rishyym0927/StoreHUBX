@@ -10,12 +10,16 @@ import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, ChevronDown
 interface VersionBuildsProps {
   slug: string;
   version: string;
+  /** Component owner/collaborator data, needed to gate the Rebuild control to
+   * users the backend will actually allow to rebuild (owner or collaborator). */
+  ownerId?: string;
+  collaborators?: string[];
 }
 
-export function VersionBuilds({ slug, version }: VersionBuildsProps) {
+export function VersionBuilds({ slug, version, ownerId, collaborators }: VersionBuildsProps) {
   const { data: builds, loading, error, refetch } = useBuilds(slug, version);
   const [expandedBuildId, setExpandedBuildId] = useState<string | null>(null);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [rebuilding, setRebuilding] = useState(false);
   const [rebuildError, setRebuildError] = useState<string | null>(null);
 
@@ -90,8 +94,18 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
     setExpandedBuildId(expandedBuildId === buildId ? null : buildId);
   };
 
+  // Mirrors the backend's own check (owner or collaborator) — see
+  // owner-actions.tsx / auto-deploy.tsx for the same ownerId comparison
+  // pattern used elsewhere in this codebase.
+  const isOwner = !!(
+    user &&
+    ownerId &&
+    (user.providerId === ownerId || collaborators?.includes(user.providerId))
+  );
+  const canRebuild = !!token && isOwner;
+
   const handleRebuild = async () => {
-    if (!token) return;
+    if (!canRebuild || !token) return;
     
     setRebuilding(true);
     setRebuildError(null);
@@ -111,7 +125,7 @@ export function VersionBuilds({ slug, version }: VersionBuildsProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-black dark:border-white">
         <h4 className="font-mono text-sm font-bold">Build History ({builds.length})</h4>
-        {token && (
+        {canRebuild && (
           <button
             onClick={handleRebuild}
             disabled={rebuilding}

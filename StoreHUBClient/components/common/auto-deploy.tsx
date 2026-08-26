@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { versionApi, githubApi } from "@/lib/api";
@@ -69,6 +69,23 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [component.id]);
+
+  // Re-run the check if `token` hydrates from persisted storage after this
+  // component's first mount (same pattern as like-button.tsx ~line 27) —
+  // otherwise checkForNewCommits above closes over a stale `token: null`
+  // forever and the owner has to click "Check Updates" manually. Only fire
+  // on the actual falsy->truthy transition (tracked via ref) rather than on
+  // every token identity change, so this doesn't refire on every
+  // checkForNewCommits identity change (it's recreated whenever `versions`
+  // changes) and doesn't loop.
+  const hadTokenRef = useRef(!!token);
+  useEffect(() => {
+    const hadToken = hadTokenRef.current;
+    hadTokenRef.current = !!token;
+    if (!hadToken && token && isLinked && isOwner) {
+      checkForNewCommits();
+    }
+  }, [token, isLinked, isOwner, checkForNewCommits]);
 
   // Deploy new commit
   const handleDeploy = async () => {

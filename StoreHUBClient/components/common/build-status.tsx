@@ -13,12 +13,16 @@ interface BuildStatusProps {
   autoRefresh?: boolean;
   onComplete?: (build: BuildJob) => void;
   onRebuild?: (newBuildId: string) => void;
+  /** Component owner/collaborator data, needed to gate the Rebuild control to
+   * users the backend will actually allow to rebuild (owner or collaborator). */
+  ownerId?: string;
+  collaborators?: string[];
 }
 
-export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild }: BuildStatusProps) {
+export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild, ownerId, collaborators }: BuildStatusProps) {
   const { data: build, loading, error } = useBuildStatus(buildId, autoRefresh);
   const completedRef = useRef(false);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [rebuilding, setRebuilding] = useState(false);
   const [rebuildError, setRebuildError] = useState<string | null>(null);
 
@@ -114,7 +118,15 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
   const statusConfig = getStatusConfig(build.status);
   const isPending = build.status === "queued" || build.status === "running";
   const isCompleted = build.status === "success" || build.status === "error";
-  const canRebuild = isCompleted && token;
+  // Mirrors the backend's own check (owner or collaborator) — see
+  // owner-actions.tsx / auto-deploy.tsx for the same ownerId comparison
+  // pattern used elsewhere in this codebase.
+  const isOwner = !!(
+    user &&
+    ownerId &&
+    (user.providerId === ownerId || collaborators?.includes(user.providerId))
+  );
+  const canRebuild = isCompleted && token && isOwner;
 
   return (
     <div className={`border-2 ${statusConfig.border} p-6 space-y-4`}>
