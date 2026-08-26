@@ -25,7 +25,19 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    // Don't check ownership until hydrated and the slug (unwrapped from the
+    // App Router params Promise by the caller) has actually resolved —
+    // checking against an empty slug spuriously 404s.
+    if (!hydrated || !slug) return;
+
+    let redirectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    // Guards against a stale in-flight check: if deps change again while
+    // componentApi.get() is still pending, cleanup below runs before this
+    // run has scheduled a timeout (redirectTimeoutId is still undefined), so
+    // there'd be nothing to clearTimeout. Without this flag, that stale
+    // check would still call setError/setTimeout after the fact and could
+    // redirect even though a later, correct check already granted access.
+    let cancelled = false;
 
     async function checkOwnership() {
       if (!user || !token) {
@@ -35,12 +47,13 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
 
       try {
         const comp = await componentApi.get(slug, token);
-        
+        if (cancelled) return;
+
         // Check if user is the owner
         // ownerId in component corresponds to providerId from the user
         if (comp.ownerId !== user.providerId) {
           setError("You don't have permission to modify this component");
-          setTimeout(() => {
+          redirectTimeoutId = setTimeout(() => {
             router.push(`/components/${slug}`);
           }, 2000);
           return;
@@ -48,16 +61,25 @@ export function OwnershipGuard({ slug, children }: OwnershipGuardProps) {
 
         setComponent(comp);
       } catch {
+        if (cancelled) return;
         setError("Failed to verify ownership");
-        setTimeout(() => {
+        redirectTimeoutId = setTimeout(() => {
           router.push(`/components/${slug}`);
         }, 2000);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     checkOwnership();
+
+    // Clear any pending redirect if slug/user/token change (or we unmount)
+    // before it fires — otherwise a stale check's redirect can fire after a
+    // later, correct check has already granted access.
+    return () => {
+      cancelled = true;
+      if (redirectTimeoutId) clearTimeout(redirectTimeoutId);
+    };
   }, [hydrated, slug, user, token, router]);
 
   if (!hydrated || loading) {
