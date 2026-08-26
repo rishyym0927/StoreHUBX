@@ -26,7 +26,7 @@ export function ComponentComments({ slug }: CommentsProps) {
 
   const fetchComments = useCallback(async () => {
     try {
-      const data = await commentApi.list(slug);
+      const data = await commentApi.list(slug, token || undefined);
       setComments(data || []);
     } catch (error) {
       console.error("Failed to load comments:", error);
@@ -34,7 +34,7 @@ export function ComponentComments({ slug }: CommentsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, showToast]);
+  }, [slug, token, showToast]);
 
   useEffect(() => {
     fetchComments();

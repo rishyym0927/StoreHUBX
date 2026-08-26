@@ -29,7 +29,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
 
   const fetchRatings = useCallback(async () => {
     try {
-      const data = await ratingApi.list(slug);
+      const data = await ratingApi.list(slug, token || undefined);
       setRatings(data.ratings || []);
       setAverageRating(data.averageRating || 0);
       setRatingCount(data.ratingCount || 0);
@@ -44,7 +44,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, user?.providerId, showToast]);
+  }, [slug, token, user?.providerId, showToast]);
 
   useEffect(() => {
     fetchRatings();

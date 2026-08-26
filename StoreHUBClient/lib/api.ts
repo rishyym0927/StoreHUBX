@@ -306,9 +306,10 @@ export const commentApi = {
   /**
    * List all comments for a component
    */
-  async list(slug: string) {
+  async list(slug: string, authToken?: string) {
     const response = await apiFetch<{ comments: Comment[] }>(
-      `/components/${slug}/comments`
+      `/components/${slug}/comments`,
+      { authToken }
     );
     return response.comments;
   },
@@ -351,9 +352,10 @@ export const ratingApi = {
   /**
    * List all ratings for a component
    */
-  async list(slug: string) {
+  async list(slug: string, authToken?: string) {
     const response = await apiFetch<RatingsListResponse>(
-      `/components/${slug}/ratings`
+      `/components/${slug}/ratings`,
+      { authToken }
     );
     return response;
   },
