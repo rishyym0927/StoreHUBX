@@ -35,9 +35,11 @@ import type {
   CollectionCreateResponse,
   CollectionUpdateRequest,
   CollectionsListResponse,
+  PublicCollectionsListResponse,
   CollectionDetailResponse,
   CollectionMutationResponse,
   ComponentsQueryParams,
+  CollectionsQueryParams,
   GitHubReposQueryParams,
   GitHubContentsQueryParams,
   GitHubBranchQueryParams,
@@ -750,6 +752,17 @@ export const notificationApi = {
 // ========================================
 
 export const collectionApi = {
+  /**
+   * List public collections, paginated, newest first (public, no auth).
+   */
+  async list(params?: CollectionsQueryParams) {
+    const query = buildQueryString(params || {});
+    const response = await apiFetch<PublicCollectionsListResponse>(
+      `/collections${query}`
+    );
+    return response;
+  },
+
   /**
    * Create a collection (requires auth)
    */

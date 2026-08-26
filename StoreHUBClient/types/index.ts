@@ -395,6 +395,14 @@ export interface CollectionsListResponse {
   collections: Collection[];
 }
 
+/** Response for GET /collections — paginated, public-only, newest first. */
+export interface PublicCollectionsListResponse {
+  page: number;
+  limit: number;
+  total: number;
+  collections: Collection[];
+}
+
 export interface CollectionDetailResponse {
   collection: Collection;
   components: Component[];
@@ -423,6 +431,11 @@ export interface ComponentsQueryParams {
   framework?: string;
   tags?: string;
   sort?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CollectionsQueryParams {
   page?: number;
   limit?: number;
 }

@@ -32,6 +32,14 @@ export function Navbar() {
             Browse
           </Link>
 
+          {/* Browse Collections */}
+          <Link
+            href="/collections"
+            className="brutal-scale text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5"
+          >
+            Collections
+          </Link>
+
           {/* New Component (Authenticated Only) */}
           {token && (
             <Link
