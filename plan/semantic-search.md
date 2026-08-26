@@ -1,13 +1,23 @@
 # Semantic Component Search (RAG-style Discovery)
 
-> **Status:** Planned — not yet implemented
+> **Status:** Phases 1–2 approved for implementation; Phases 3–4 still planned
 > **Complexity:** Medium (well-understood pattern, no new infrastructure category)
 > **Depends on:** existing build pipeline, `component_versions` collection, MongoDB
 > **Tech stack:** 100% free / self-hosted — `bge-small-en-v1.5` embedding model run
-> locally via a small Python sidecar, brute-force cosine similarity in Go (no
-> vector DB needed at this catalog size), with **Qdrant** documented as the
-> drop-in upgrade path once/if the catalog outgrows in-memory search. No paid
-> API, no managed vector DB, no per-query cost. See §5 and §14.
+> locally via a small Python sidecar **on ONNX (`fastembed`), not PyTorch**,
+> brute-force cosine similarity in Go (no vector DB needed at this catalog
+> size), with **Qdrant** documented as the drop-in upgrade path once/if the
+> catalog outgrows in-memory search. No paid API, no managed vector DB, no
+> per-query cost. See §5, §14 and §15.
+
+> **Decisions taken (2026-08-16).** Two choices were made when this moved from
+> plan to implementation, both recorded inline below:
+> 1. **Scope:** ship Phases 1–2 first (vectors exist + search works). RRF
+>    fusion, `/similar` and prop extraction stay planned. See §10.
+> 2. **Runtime:** the sidecar uses `fastembed` (ONNX) rather than
+>    `sentence-transformers` (PyTorch) — same model, same 384 dimensions,
+>    ~200MB image and ~150MB RAM instead of ~2GB and ~600MB. This is the single
+>    change that makes free production hosting viable. See §5 and §15.
 
 ---
 
@@ -58,9 +68,9 @@ similarity — then re-rank with the structured quality signals we already have
                                     ▼
                      ┌──────────────────────────────────────────┐
                      │  embed-svc  (new, tiny Python sidecar)     │
-                     │  FastAPI + sentence-transformers,          │
+                     │  FastAPI + fastembed (ONNX, no torch),     │
                      │  model = bge-small-en-v1.5, runs on CPU,   │
-                     │  no external API calls, no cost            │
+                     │  ~150MB RAM, no external calls, no cost    │
                      └─────────────────────────────────────────┘
 
                      ┌──────────────────────────────────────────┐
@@ -150,8 +160,9 @@ Depends on: {Dependencies}
 Readme: {first ~1500 chars of Readme, markdown stripped}
 ```
 
-Truncate the whole document to the embedding model's token limit (8k for
-`text-embedding-3-*`). One vector per component, **not** per chunk — components
+Truncate the whole document to the embedding model's token limit — **512 tokens
+for `bge-small-en-v1.5`**, which is why the README slice above is capped at
+~1500 characters rather than fed in whole. One vector per component, **not** per chunk — components
 are small enough that chunking adds complexity without improving recall. This
 is a deliberate simplification versus a document-RAG system.
 
@@ -174,8 +185,8 @@ type ComponentEmbedding struct {
     Slug        string             `bson:"slug" json:"slug"`
 
     Vector      []float32          `bson:"vector" json:"-"`      // never serialized to clients
-    Model       string             `bson:"model" json:"model"`   // e.g. "text-embedding-3-small"
-    Dimensions  int                `bson:"dimensions" json:"dimensions"`
+    Model       string             `bson:"model" json:"model"`   // e.g. "bge-small-en-v1.5"
+    Dimensions  int                `bson:"dimensions" json:"dimensions"` // 384
 
     // Provenance — lets us detect staleness without re-embedding to compare.
     DocHash     string             `bson:"docHash" json:"docHash"`     // sha256 of the rendered document
@@ -246,23 +257,36 @@ small dedicated embedding service. New component in the repo:
 ```
 StoreHUBXBackend/embed-svc/
   main.py              # FastAPI, one endpoint
-  requirements.txt     # fastapi, uvicorn, sentence-transformers
+  requirements.txt     # fastapi, uvicorn, fastembed   (ONNX — no torch)
   Dockerfile
 ```
 
 ```python
 # embed-svc/main.py — the entire service, roughly
 from fastapi import FastAPI
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 app = FastAPI()
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+model = TextEmbedding("BAAI/bge-small-en-v1.5")   # ONNX runtime, vectors are pre-normalized
 
 @app.post("/embed")
 def embed(body: dict):
-    vectors = model.encode(body["texts"], normalize_embeddings=True)
-    return {"vectors": vectors.tolist(), "model": "bge-small-en-v1.5", "dimensions": 384}
+    vectors = [v.tolist() for v in model.embed(body["texts"])]
+    return {"vectors": vectors, "model": "bge-small-en-v1.5", "dimensions": 384}
 ```
+
+**Why `fastembed` and not `sentence-transformers`.** They serve the same model
+and produce the same 384-dimension vectors; the difference is what gets
+installed underneath. `sentence-transformers` pulls PyTorch — roughly a 2GB
+image and ~600MB resident. `fastembed` runs the model through ONNX Runtime:
+~200MB image, ~150MB resident, and faster CPU inference for short documents.
+
+That gap is not a micro-optimization, it is the deployment story. At ~150MB the
+sidecar fits inside a 512MB free tier; at ~600MB it does not, and production
+requires a paid instance. Since the whole point of this design is zero marginal
+cost (§14), ONNX is the correct default. `sentence-transformers` remains a
+drop-in swap behind the same HTTP contract if a future model isn't packaged for
+ONNX.
 
 The Go `Embedder` implementation is a thin HTTP client calling this service
 (`http://embed-svc:8000/embed` in Docker Compose, alongside Mongo/Redis/MinIO
@@ -344,12 +368,35 @@ a `--dry-run` flag.
 ### 7.1 New endpoint
 
 ```
-GET /search?q=<text>&framework=<f>&limit=20&cursor=<opaque>
+GET /search?q=<text>&framework=<f>&tags=<a,b>&page=1&limit=10
 ```
 
 Public, registered next to the other public component reads in
 `internal/routes/routes.go:25-30`. Wrapped in `middleware.OptionalAuth` so a
 logged-in owner's private components can appear in *their own* results.
+
+**The response MUST mirror `ComponentsListResponse` exactly**, plus one field:
+
+```jsonc
+{ "success": true, "data": {
+    "page": 1, "limit": 10, "total": 42,
+    "components": [ /* full Component docs, ranked */ ],
+    "mode": "vector"            // or "keyword" when degraded
+}}
+```
+
+This is a correction to an earlier draft of this plan, which proposed an opaque
+`cursor`. The frontend browse page (`app/components/page.tsx:44-60`) is built on
+page/limit/total: it computes `totalPages = Math.ceil(total / limit)` and drives
+the shared `Pagination` primitive from it. A cursor contract would force a
+rewrite of that page and lose the URL-as-source-of-truth behaviour it already
+has. Matching the existing envelope means `useComponents` only has to choose a
+different endpoint — every other part of the page keeps working untouched.
+
+For the same reason `/search` **must** accept `framework` and `tags` and apply
+them as prefilters before the cosine scan. The browse page's framework chips and
+tags input stay mounted while a query is active; if the endpoint ignored them,
+the chips would silently stop filtering.
 
 ### 7.2 Pipeline
 
@@ -368,12 +415,34 @@ logged-in owner's private components can appear in *their own* results.
 ```
 
 **In-memory vector cache:** rather than re-querying Mongo for every search,
-keep the full `(componentId, vector, rankingFields)` set in a package-level Go
-slice, refreshed every 30s by a background ticker (same pattern as
-`heartbeatLoop` in `internal/worker/worker.go:112`) and on-demand whenever an
-`index:stream` message is processed. At a few thousand components this is a
-few MB of RAM — trivial. This is what makes brute-force search fast: no
-database round-trip on the hot path at all, just a for-loop over memory.
+keep the full `(componentId, vector, visibility, ownerId, collaborators,
+rankingFields)` set in a package-level Go slice. At a few thousand components
+this is a few MB of RAM — trivial. This is what makes brute-force search fast:
+no database round-trip on the hot path at all, just a for-loop over memory.
+
+**How it stays fresh — corrected.** An earlier draft said the slice refreshes
+"on-demand whenever an `index:stream` message is processed." **That does not
+work:** `index:stream` is consumed by the *worker* process, while the slice
+lives in the *API* process serving `/search`. The two are separate binaries
+(see CLAUDE.md) and share nothing but MongoDB and Redis. Left as written, the
+only refresh would be the 30s ticker, which has a security consequence: a
+component switched to private would remain searchable for up to 30 seconds.
+
+The fix reuses machinery that already exists. Every component write already
+bumps `cache:components:list:epoch` via `invalidateComponentCaches`
+(`internal/handlers/component_handler.go:37-40`) — including visibility changes
+(`component_visibility_handler.go:44,84,112`) and ratings
+(`rating_handler.go:141,219`). So:
+
+1. Each `/search` request reads that epoch (one Redis GET, ~1ms).
+2. If it differs from the epoch the slice was loaded at, reload from Mongo
+   before scanning.
+3. The 30s ticker (same pattern as `heartbeatLoop`,
+   `internal/worker/worker.go:112`) stays as the fallback for when Redis is
+   unavailable and the epoch can't be read.
+
+This makes a visibility change take effect on the very next search rather than
+up to 30s later, and adds no new invalidation mechanism to maintain.
 
 **Latency budget:** ~30ms embed (local, no network) + ~5-15ms brute-force scan
 over an in-memory slice + ~20ms hydrate ≈ **~60-80ms cold, <10ms warm.**
@@ -441,8 +510,8 @@ Free once vectors exist, and arguably higher-intent than text search:
 GET /components/:slug/similar?limit=6
 ```
 
-Fetch the component's own stored vector, `$vectorSearch` with it, drop the self
-match. Renders as a "Similar components" rail on the detail page
+Fetch the component's own stored vector, run it through the same in-memory
+cosine scan as `/search`, drop the self match. Renders as a "Similar components" rail on the detail page
 (`app/components/[slug]/page.tsx`). **Ship this in the same PR as search** — it
 is ~40 lines and demos extremely well.
 
@@ -455,7 +524,7 @@ is ~40 lines and demos extremely well.
 | `lib/api.ts` | `searchComponents(q, filters)` and `getSimilarComponents(slug)` via `apiFetch<T>` |
 | `types/index.ts` | `SearchResult` (component + `score`, optional `scoreBreakdown`), `ComponentFacts` |
 | `hooks/use-api.ts` | `useSearch(query)` with 250ms debounce + request cancellation on keystroke |
-| `app/components/page.tsx` | search input becomes semantic; keep framework/tag chips as `$vectorSearch` prefilters |
+| `app/components/page.tsx` | search input becomes semantic; keep framework/tag chips as prefilters applied before the cosine scan |
 | `app/components/[slug]/page.tsx` | "Similar components" rail + a "Props" table from `component_facts` |
 | `components/common/` | new `search-input.tsx` and `similar-components-rail.tsx`, brutalist-styled to match existing primitives |
 
@@ -467,16 +536,126 @@ experience rather than showing a broken search.
 
 ## 10. Implementation phases
 
-**Phase 1 — Vectors exist (1-2 days)**
-`internal/embed` package + OpenAI impl; `ComponentEmbedding` model + indexes;
-backfill script; document assembly from *existing* fields only (name,
-description, tags, README) — no source extraction yet.
+> **Phases 1–2 are the approved first slice.** They are expanded into a file
+> map below. Phases 3–4 remain planned and are deliberately not started until
+> the first slice can be judged in use.
+
+**Phase 1 — Vectors exist (1-2 days)** ← approved
+`internal/embed` package + HTTP client for the sidecar; `ComponentEmbedding`
+model + indexes; backfill script; document assembly from *existing* fields only
+(name, description, tags, README) — no source extraction yet.
 *Exit criteria:* every component has a vector; `cmd/backfill_embeddings` is idempotent.
 
-**Phase 2 — Search works (1-2 days)**
-`GET /search` with `$vectorSearch` + re-ranking; Redis caching with epoch
-invalidation; frontend search input.
+**Phase 2 — Search works (1-2 days)** ← approved
+`GET /search` — brute-force cosine over the in-memory vector slice (§7.2) plus
+re-ranking (§7.3); Redis caching with epoch invalidation; frontend search input.
 *Exit criteria:* "pricing card with a toggle" returns sensible results on a seeded catalog.
+
+### 10.1 File map for Phases 1–2
+
+**New — backend**
+
+| File | Purpose |
+|---|---|
+| `internal/embed/embed.go` | `Embedder` interface + HTTP client. Gate with `embed.Enabled()`, mirroring `ai.FallbackEnabled()` (`internal/ai/groq.go:24`). |
+| `internal/models/embedding.go` | `ComponentEmbedding` (§4.1). |
+| `internal/search/document.go` | Assemble + render the document (§3.3); sha256 → `DocHash`. |
+| `internal/search/store.go` | In-memory vector cache + cosine scan, 30s ticker refresh. |
+| `internal/search/rank.go` | `score()` (§7.3), weights from env. |
+| `internal/handlers/index.go` | `notifyIndexer` — near-copy of `notifyWorker` (`internal/handlers/build.go:23`). |
+| `internal/handlers/search_handler.go` | `GET /search`. |
+| `internal/worker/index.go` | `indexLoop` (Redis Stream) + 5-min `DocHash` sweep. |
+| `cmd/backfill_embeddings/main.go` | Backfill. **Dry run by default, writes only with `--apply`**, matching `cmd/normalize_frameworks` and `cmd/reap_orphans`. |
+| `embed-svc/{main.py,requirements.txt,Dockerfile}` | The sidecar (§5). |
+
+**Modified — backend**
+
+- `cmd/main.go` — `embed.Init()` and `search.Init()` after `cache.Init()` (line 34). The **API process** needs both: the embedder to vectorize incoming queries, and the in-memory store to scan. Neither may be fatal on failure — log and degrade, like `cache.Init()`.
+- `cmd/worker/main.go` — `embed.Init()` after `cache.Init()`. The **worker** needs the embedder to index, but *not* the in-memory store — it never serves a query.
+- `internal/routes/routes.go` — `app.Get("/search", middleware.OptionalAuth, handlers.SearchComponents)` in the public-reads block (line 25), so an owner sees their own private components.
+- `internal/worker/worker.go` — `Run()` (line 96) starts `go p.indexLoop(ctx)` **before** the Redis branch at line 99. Note `Run` blocks on `streamLoop` in the Redis path and on `pollLoop` otherwise, so `indexLoop` must be launched ahead of the branch or it will never start in one of the two modes.
+- `internal/handlers/component_handler.go` — `notifyIndexer` on `CreateComponent`; like/rating changes do a cheap `UpdateOne` of ranking fields only, **never a re-embed** (§6.1). **`DeleteComponent` (line 344) must also delete the `component_embeddings` row** — see the note below.
+- `internal/handlers/version_handler.go` — `notifyIndexer` on `AddVersion`.
+- `internal/handlers/component_visibility_handler.go` — `notifyIndexer` on visibility change.
+- `internal/db/indexes.go` — unique on `componentId`, plus `visibility` (§4.3). Note `EnsureIndexes` is only called from `cmd/main.go`, so the API must have started at least once before the worker indexes.
+- `internal/metrics/metrics.go` — the counters in §13. `promauto` self-registers, so adding the vars is the whole change.
+- `docker-compose.yml` — `embed-svc` beside mongodb/minio/redis.
+- `.env.example` — the variables in §12.
+
+**`DeleteComponent` is the easiest thing here to miss, and the most visible when
+missed.** It already fans out across six collections — `component_versions`,
+`build_jobs`, `interactions`, `notifications`, `follows`, and a `$pull` from
+`collections` — and `component_embeddings` must join that list. Without it, a
+deleted component keeps a live vector, keeps matching queries, and surfaces in
+results until someone notices. The in-memory store would also need to tolerate
+hydration finding no `Component` for an id; it should drop such rows rather than
+return a null entry.
+
+**Modified — frontend**
+
+- `types/index.ts` — `SearchResult`, `SearchResponse` (carrying `mode`).
+- `lib/api.ts` — `searchComponents(q, filters)` via the existing `apiFetch<T>`.
+- `hooks/use-api.ts` — `useSearch(query)`, 250ms debounce with cancellation (the browse page already debounces at 300ms — match that idiom).
+- `app/components/page.tsx` — the existing input calls `/search` when `mode` is `vector`; otherwise current behaviour is untouched.
+
+Concretely, because `/search` returns the same envelope as `/components` (§7.1):
+
+- `lib/api.ts` — add `componentApi.search(params, authToken?)` beside the
+  existing `list` (line 177); same `ComponentsQueryParams` in, same shape out.
+- `hooks/use-api.ts` — `useComponents` (line 43) picks the endpoint:
+  `params.q ? componentApi.search(...) : componentApi.list(...)`. This single
+  line is the entire integration. It also means `/me`, collections, and every
+  other caller of `componentApi.list` are unaffected.
+- `app/components/page.tsx` — **no structural change required.** Its URL-state,
+  300ms debounce (line 80-89), chips, pagination and skeletons all keep working.
+  The only optional addition is a small "semantic" indicator when
+  `data.mode === "vector"`.
+
+No new UI primitives — reuse `ComponentCard`, `ComponentCardSkeleton`,
+`EmptyState`, `Pagination` per the conventions in CLAUDE.md.
+
+### 10.2 Things explicitly checked and *not* needed
+
+Recorded so nobody re-derives them mid-implementation:
+
+- **Swagger annotations.** `/docs/index.html` is served from the generated
+  `docs/` package, but **no handler in the codebase carries a single `@Router`
+  or `@Summary` annotation** — the generated spec is already minimal. Adding
+  the endpoint requires no doc work and no `swag init` re-run. (Two copies of
+  the generated output exist, `docs/` and `cmd/docs/`; `cmd/main.go` imports
+  the former. Pre-existing, unrelated to this feature.)
+- **CORS and rate limiting.** Both are global in `cmd/main.go` (lines 39-46), so
+  `/search` inherits them. The per-query Redis cache (§7.2) is what keeps an
+  uncached-query flood from hammering `embed-svc`.
+- **`internal/config`.** `Config` holds only six fields and the `ai` package
+  reads its own env directly (`internal/ai/groq.go:24,40`). `internal/embed`
+  follows that precedent — no change to the config struct.
+- **New queue technology.** `index:stream` is another Redis Stream on the
+  existing client; nothing new to deploy.
+- **Frontend env.** No new `NEXT_PUBLIC_*` variable — `/search` lives on the
+  same API base the client already uses.
+
+### 10.3 Known sequencing wrinkle
+
+`CreateComponent` fires `notifyIndexer`, but a component has **no README until a
+version exists** — `Readme` lives on `ComponentVersion`
+(`internal/models/version.go:18`). So the first vector is built from name,
+description, tags and frameworks only, and is genuinely weaker. The re-index on
+`AddVersion` replaces it. This is correct behaviour, not a bug, but it means a
+freshly created component ranks poorly until its first version lands — worth
+knowing before concluding the model is underperforming.
+
+### 10.4 Verification for Phases 1–2
+
+1. `docker-compose up -d embed-svc`; `curl -X POST localhost:8000/embed -d '{"texts":["a pricing card"]}'` → 384 floats.
+2. `go run cmd/backfill_embeddings/main.go` writes nothing. Re-run with `--apply`; confirm one row per component. Run `--apply` **twice** — the second run must skip everything via `DocHash`.
+3. Create a component with the API + worker running; confirm an index job is logged and a vector lands.
+4. `curl 'localhost:8080/search?q=pricing+card+with+a+monthly+yearly+toggle'`, compared against `curl 'localhost:8080/components?q=...'` on the same query.
+5. **Auth check (the one that matters most):** mark a component private, search its text signed out → absent **on the very next request**, not after a delay; search as its owner → present. Repeat as a collaborator.
+6. **Deletion:** delete a component, search its distinctive text → absent, and confirm `component_embeddings` has no orphan row.
+7. **Degradation:** stop `embed-svc`, search again → 200 with `"mode":"keyword"`, never a 500. Then stop Redis too and repeat — still 200.
+8. **Frontend contract:** with a query active, confirm pagination still pages, the framework chips still filter, and the URL still round-trips on reload. These are the things the envelope decision in §7.1 exists to protect.
+9. `curl localhost:8080/metrics | grep storehubx_search`.
 
 **Phase 3 — Quality (2-3 days)**
 RRF hybrid fusion with the existing keyword search; `?debug=1` score breakdown;
@@ -497,6 +676,9 @@ richer documents; re-index sweep; Props table in the UI.
 | **Private components leak into public results** | Severe — auth bypass | `visibility` is filtered *before* the brute-force scan (the in-memory candidate set only ever contains public vectors, plus the viewer's own private ones when authenticated). Add an explicit assertion in the handler that every returned doc is public unless the viewer is owner/collaborator. This mirrors the existing "private components skip the Redis fast-path" decision. |
 | `embed-svc` sidecar down/unreachable | Search degraded | Fall back to keyword search on error; never 500. Health-check `embed-svc` on worker startup and log a warning, same tone as the existing Redis-unavailable warning (`cache.go:30`). |
 | Stale vectors after edits | Bad results | `DocHash` comparison in the 5-min sweep catches anything the event triggers missed. |
+| **Deleted components keep matching queries** | High — visibly broken results | `DeleteComponent` must remove the `component_embeddings` row alongside the six collections it already cleans up (§10.1). Defence in depth: the hydration step drops any candidate whose `Component` no longer exists. |
+| **A component made private stays searchable briefly** | Severe — same class as an auth bypass | The API's in-memory slice reloads whenever `cache:components:list:epoch` changes, which every visibility write already bumps (§7.2). Without this the window is up to 30s. |
+| API and worker disagree about the embedding model | Vectors of mixed dimensions in one scan | Both processes read the same `EMBEDDING_MODEL`/`EMBEDDING_DIMENSIONS` env. The store skips any row whose `Dimensions` doesn't match the configured value, and logs a count — a non-zero count means a migration is half-finished. |
 | Model change (e.g. swapping to a bigger model later) | Full re-index | `Model` + `Dimensions` are stored per row. A model migration is a backfill job, then an atomic cutover of an env var. Plan for it; don't pretend it won't happen. |
 | Catalog outgrows in-memory brute-force (~50k+ components) | Search gets slow | This is the trigger to introduce Qdrant (self-hosted, free, see §14) — swap the `internal/search` implementation behind its existing interface. Not a concern at current or near-term scale. |
 | Prompt/document injection via README | Poisoned ranking | Truncate README, strip HTML/scripts, and cap any single field's contribution. Embeddings are not instruction-following, so the blast radius is limited to relevance manipulation — treat it as spam, not RCE. |
@@ -582,3 +764,38 @@ auto-provisioned Grafana dashboard (`grafana/provisioning/`).
 - **Why keep keyword search at all?** Exact-match queries (a package name, an
   author's handle, a precise component name) are a large share of real search
   traffic and are exactly where embeddings are weakest. RRF fusion gets both.
+
+---
+
+## 15. Running this in production for free
+
+Every design choice above was made so that the whole stack has a genuinely free
+configuration — no trial credits, no expiring tier.
+
+| Piece | Free option | Note |
+|---|---|---|
+| Frontend | **Vercel** Hobby | Next.js, no card required |
+| Go API + worker | **Oracle Cloud Always Free** ARM VM (4 vCPU / 24GB) | The strongest permanently-free tier available; comfortably runs API, worker and `embed-svc` together. Fly.io or Koyeb are the fallbacks. |
+| `embed-svc` | Same VM, or **Google Cloud Run** (2M req/mo, scales to zero) | Cloud Run cold start is ~5-10s with ONNX. Tolerable *only* because `/search` falls back to keyword on timeout (§5) — without that degradation path, don't scale this to zero. |
+| MongoDB | **Atlas M0** (512MB) | No Atlas Vector Search needed: cosine runs in Go (§7.2), so the free tier is sufficient. This is a direct payoff of the brute-force decision. |
+| Redis | **Upstash** free tier | Cache + streams; already optional everywhere (§5). |
+| Object storage | **Cloudflare R2** (10GB free) | Replaces MinIO in production; `CDN_BASE_URL` already exists for exactly this swap. |
+
+**The number that decides it: ~150MB RAM for `embed-svc`.** That is what keeps
+the sidecar inside a 512MB free instance. Under PyTorch it would need ~600MB and
+every option above except the Oracle VM stops working — which is the whole
+reason for the ONNX decision in §5.
+
+**Marginal cost per search is zero.** No embedding API, no managed vector DB, no
+per-query billing. The only recurring compute is indexing, which runs on
+create / new version / build success — never on a read.
+
+**Simplest concrete deployment:** one Oracle Always Free ARM VM running the
+existing `docker-compose` stack plus `embed-svc`, Atlas M0 for data, R2 for
+bundles, Vercel for the frontend. That is the entire production footprint, at $0.
+
+**What would eventually cost money:** outgrowing Atlas M0's 512MB (the vectors
+are ~1.5KB each, so ~10k components is only ~15MB — text and build jobs will hit
+the limit long before embeddings do), or outgrowing in-memory brute force at
+~50k components, which is the trigger to introduce self-hosted Qdrant (§14) —
+itself free, just one more container.
