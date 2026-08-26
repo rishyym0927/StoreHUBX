@@ -233,6 +233,10 @@ func (p *Processor) process(ctx context.Context, job *models.BuildJob) {
 	workRoot := filepath.Join(p.tmpDir, "job-"+jobID.Hex())
 	_ = os.RemoveAll(workRoot)
 	_ = os.MkdirAll(workRoot, 0o755)
+	// Clean up the extracted repo/node_modules/dist regardless of how this
+	// job finishes (success, any failure return, or a panic) so BUILD_TMP_DIR
+	// doesn't grow unbounded across jobs.
+	defer os.RemoveAll(workRoot)
 
 	p.logPush(ctx, jobID, "downloading repository zip...")
 	zipPath, err := downloadRepoZip(ctx, workRoot, job.Repo.Owner, job.Repo.Repo, firstNonEmpty(job.Repo.Commit, job.Repo.Ref, "main"), job.OwnerID)
