@@ -114,7 +114,7 @@ func CreateComponent(c *fiber.Ctx) error {
 	})
 }
 
-// GET /components  (public)  with q, framework, tags, page, limit
+// GET /components  (public)  with q, framework, tags, sort, page, limit
 func GetAllComponents(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -137,8 +137,14 @@ func GetAllComponents(c *fiber.Ctx) error {
 	framework := strings.TrimSpace(strings.ToLower(c.Query("framework", "")))
 	tagsParam := strings.TrimSpace(c.Query("tags", "")) // "ui,button,react"
 
+	// Sort: an explicit rating/likes/views choice takes priority over
+	// textScore ranking even when q is set — the caller chose it deliberately.
+	// Anything else (empty, "newest", or unrecognized) keeps current behavior.
+	sortParam := strings.ToLower(strings.TrimSpace(c.Query("sort", "")))
+	sortOverridesTextScore := sortParam == "rating" || sortParam == "likes" || sortParam == "views"
+
 	epoch, _ := cache.Get(ctx, "cache:components:list:epoch")
-	listCacheKey := fmt.Sprintf("cache:components:list:v%s:p=%d:l=%d:q=%s:f=%s:t=%s", epoch, page, limit, q, framework, tagsParam)
+	listCacheKey := fmt.Sprintf("cache:components:list:v%s:p=%d:l=%d:q=%s:f=%s:t=%s:s=%s", epoch, page, limit, q, framework, tagsParam, sortParam)
 	if cached, hit := cache.Get(ctx, listCacheKey); hit {
 		c.Set("Content-Type", "application/json")
 		return c.SendString(fmt.Sprintf(`{"success":true,"data":%s}`, cached))
@@ -170,14 +176,24 @@ func GetAllComponents(c *fiber.Ctx) error {
 
 	if q != "" {
 		// Rank by text relevance when searching (requires the $meta score
-		// field to be added via aggregation so all other fields survive).
+		// field to be added via aggregation so all other fields survive) —
+		// unless the caller explicitly asked for a different sort, which
+		// takes priority over textScore ranking.
 		pipeline := mongo.Pipeline{
 			{{Key: "$match", Value: filter}},
-			{{Key: "$addFields", Value: bson.M{"score": bson.M{"$meta": "textScore"}}}},
-			{{Key: "$sort", Value: bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}}}},
-			{{Key: "$skip", Value: int64(skip)}},
-			{{Key: "$limit", Value: int64(limit)}},
 		}
+		var sortStage bson.D
+		if sortOverridesTextScore {
+			sortStage = componentSortOrder(sortParam)
+		} else {
+			pipeline = append(pipeline, bson.D{{Key: "$addFields", Value: bson.M{"score": bson.M{"$meta": "textScore"}}}})
+			sortStage = bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}}
+		}
+		pipeline = append(pipeline,
+			bson.D{{Key: "$sort", Value: sortStage}},
+			bson.D{{Key: "$skip", Value: int64(skip)}},
+			bson.D{{Key: "$limit", Value: int64(limit)}},
+		)
 		cursor, err := col.Aggregate(ctx, pipeline)
 		if err != nil {
 			return utils.Error(c, 500, "database error")
@@ -190,7 +206,7 @@ func GetAllComponents(c *fiber.Ctx) error {
 		opts := options.Find().
 			SetSkip(int64(skip)).
 			SetLimit(int64(limit)).
-			SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
+			SetSort(componentSortOrder(sortParam))
 
 		cursor, err := col.Find(ctx, filter, opts)
 		if err != nil {
@@ -298,6 +314,22 @@ func GetComponent(c *fiber.Ctx) error {
 	return utils.Success(c, fiber.Map{
 		"component": comp,
 	})
+}
+
+// componentSortOrder maps the `sort` query param on GET /components to a
+// Mongo sort spec. Empty, "newest", or any unrecognized value falls back to
+// createdAt desc (current/default behavior) rather than erroring.
+func componentSortOrder(sortParam string) bson.D {
+	switch sortParam {
+	case "rating":
+		return bson.D{{Key: "averageRating", Value: -1}, {Key: "ratingCount", Value: -1}, {Key: "createdAt", Value: -1}}
+	case "likes":
+		return bson.D{{Key: "likeCount", Value: -1}, {Key: "createdAt", Value: -1}}
+	case "views":
+		return bson.D{{Key: "viewCount", Value: -1}, {Key: "createdAt", Value: -1}}
+	default:
+		return bson.D{{Key: "createdAt", Value: -1}}
+	}
 }
 
 // normalizeTerms trims, lowercases and de-duplicates a framework/tag list
