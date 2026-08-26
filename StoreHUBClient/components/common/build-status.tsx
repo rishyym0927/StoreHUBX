@@ -65,15 +65,20 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
     );
   }
 
-  if (error) {
-    return (
-      <div className="border border-red-600 dark:border-red-400 p-4">
-        <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
-      </div>
-    );
+  // Only fall through to a full-page error when there's truly no data to
+  // show (first load failed). If we have a stale-but-valid build from a
+  // prior fetch, render it with an inline warning instead of blanking the
+  // whole panel on a transient poll failure.
+  if (!build) {
+    if (error) {
+      return (
+        <div className="border border-red-600 dark:border-red-400 p-4">
+          <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
+        </div>
+      );
+    }
+    return null;
   }
-
-  if (!build) return null;
 
   const getStatusConfig = (status: string): { label: string; icon: LucideIcon; color: string; border: string } => {
     switch (status) {
@@ -175,6 +180,13 @@ export function BuildStatus({ buildId, autoRefresh = true, onComplete, onRebuild
           </div>
         </div>
       </div>
+
+      {/* Transient poll error — stale data is still shown above, this is just a heads-up */}
+      {error && (
+        <div className="border border-yellow-600 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-950 p-3">
+          <p className="font-mono text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Showing last known status — {error}</p>
+        </div>
+      )}
 
       {/* Rebuild Error Message */}
       {rebuildError && (

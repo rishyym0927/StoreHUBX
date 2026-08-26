@@ -34,15 +34,19 @@ export function VersionBuilds({ slug, version, ownerId, collaborators }: Version
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-6 border border-red-600 dark:border-red-400">
-        <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
-      </div>
-    );
-  }
-
+  // Only fall through to a full-page error when there's truly no data to
+  // show (first load failed). If we have stale-but-valid builds from a
+  // prior fetch, render them with an inline warning instead of blanking
+  // the whole list on a transient poll failure.
   if (!builds || builds.length === 0) {
+    if (error) {
+      return (
+        <div className="p-6 border border-red-600 dark:border-red-400">
+          <p className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="p-6 border border-black dark:border-white text-center">
         <p className="font-mono text-sm text-black/60 dark:text-white/60">No builds yet</p>
@@ -136,6 +140,13 @@ export function VersionBuilds({ slug, version, ownerId, collaborators }: Version
           </button>
         )}
       </div>
+
+      {/* Transient poll error — stale data is still shown above, this is just a heads-up */}
+      {error && (
+        <div className="border border-yellow-600 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-950 p-3">
+          <p className="font-mono text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Showing last known builds — {error}</p>
+        </div>
+      )}
 
       {/* Rebuild Error Message */}
       {rebuildError && (
