@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/store";
 import {
   componentApi,
@@ -231,7 +231,9 @@ export function useBuildStatus(
               : err instanceof Error
               ? err.message
               : "Failed to fetch build status";
-          setState({ data: null, loading: false, error: errorMessage });
+          // Keep the last-known-good data on a transient poll failure
+          // instead of blanking the UI to an error state.
+          setState((prev) => ({ ...prev, loading: false, error: errorMessage }));
         }
       }, 3000); // Poll every 3 seconds for live log updates
 
@@ -265,10 +267,16 @@ export function useBuilds(
     loading: true,
     error: null,
   });
+  // Mirrors state.data so the polling interval can read the latest builds
+  // without pulling them out of a setState updater (updaters must stay
+  // pure — React may invoke them more than once, e.g. under StrictMode,
+  // which would double the network call).
+  const dataRef = useRef<BuildJob[] | null>(null);
 
   const fetchBuilds = useCallback(async () => {
     if (!slug || !version) {
       setState({ data: null, loading: false, error: null });
+      dataRef.current = null;
       return;
     }
 
@@ -277,6 +285,7 @@ export function useBuilds(
     try {
       const builds = await buildApi.list(slug, version, token ?? undefined);
       setState({ data: builds, loading: false, error: null });
+      dataRef.current = builds;
     } catch (err) {
       const errorMessage =
         err instanceof ApiError
@@ -284,7 +293,7 @@ export function useBuilds(
           : err instanceof Error
           ? err.message
           : "Failed to fetch builds";
-      setState({ data: null, loading: false, error: errorMessage });
+      setState((prev) => ({ ...prev, loading: false, error: errorMessage }));
     }
   }, [slug, version, token]);
 
@@ -298,6 +307,7 @@ export function useBuilds(
         const builds = await buildApi.list(slug, version, token ?? undefined);
         if (cancelled) return;
         setState({ data: builds, loading: false, error: null });
+        dataRef.current = builds;
       } catch (err) {
         if (cancelled) return;
         const errorMessage =
@@ -306,7 +316,9 @@ export function useBuilds(
             : err instanceof Error
             ? err.message
             : "Failed to fetch builds";
-        setState({ data: null, loading: false, error: errorMessage });
+        // Keep the last-known-good data on a transient poll failure
+        // instead of blanking the UI to an error state.
+        setState((prev) => ({ ...prev, loading: false, error: errorMessage }));
       }
     };
 
@@ -315,13 +327,10 @@ export function useBuilds(
     // Keep polling while any build is still queued/running, so the
     // list picks up live status/log updates without a manual refresh.
     const interval = setInterval(() => {
-      setState((prev) => {
-        const hasActiveBuild = prev.data?.some(
-          (b) => b.status === "queued" || b.status === "running"
-        );
-        if (hasActiveBuild) poll();
-        return prev;
-      });
+      const hasActiveBuild = dataRef.current?.some(
+        (b) => b.status === "queued" || b.status === "running"
+      );
+      if (hasActiveBuild) poll();
     }, 3000);
 
     return () => {

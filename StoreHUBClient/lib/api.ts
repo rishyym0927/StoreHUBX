@@ -132,7 +132,19 @@ async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
       return {} as T;
     }
 
-    const json = JSON.parse(text);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // A 200 response that isn't valid JSON (e.g. an HTML error page from a
+      // misconfigured proxy) shouldn't surface a raw SyntaxError to the user.
+      throw new ApiError(
+        res.status,
+        res.statusText,
+        "Received an invalid response from the server."
+      );
+    }
 
     // Normalize response structure
     // Handle {success: true, data: {...}} format
