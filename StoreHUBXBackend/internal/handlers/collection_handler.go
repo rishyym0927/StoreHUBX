@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,6 +93,58 @@ func ListUserCollections(c *fiber.Ctx) error {
 
 	return utils.Success(c, fiber.Map{
 		"collections": collections,
+	})
+}
+
+// GET /collections  (public)  with page, limit
+//
+// Site-wide discovery endpoint, mirroring GetAllComponents' pagination
+// pattern. Only public collections are ever listed here — a caller wanting
+// their own private collections uses ListUserCollections instead.
+func ListPublicCollections(c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	skip := (page - 1) * limit
+
+	col := db.Client.Database("storehub").Collection("collections")
+	filter := bson.M{"visibility": "public"}
+
+	opts := options.Find().
+		SetSkip(int64(skip)).
+		SetLimit(int64(limit)).
+		SetSort(bson.D{{Key: "createdAt", Value: -1}})
+
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return utils.Error(c, 500, "database error")
+	}
+	defer cursor.Close(ctx)
+
+	// IMPORTANT: pre-init so it marshals as [] not null
+	collections := make([]models.Collection, 0, limit)
+	if err := cursor.All(ctx, &collections); err != nil {
+		return utils.Error(c, 500, "failed to decode collections")
+	}
+
+	total, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		total = int64(len(collections)) // fallback
+	}
+
+	return utils.Success(c, fiber.Map{
+		"page":        page,
+		"limit":       limit,
+		"total":       total,
+		"collections": collections, // [] when empty
 	})
 }
 

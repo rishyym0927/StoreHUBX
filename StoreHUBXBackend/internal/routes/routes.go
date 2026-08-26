@@ -100,6 +100,9 @@ func RegisterRoutes(app *fiber.App) {
 	api.Delete("/collections/:id/components/:componentId", handlers.RemoveComponentFromCollection)
 	// OptionalAuth so an owner can see their own private collections
 	app.Get("/users/:id/collections", middleware.OptionalAuth, handlers.ListUserCollections)
+	// Site-wide public collection discovery, listed before the :id route so it
+	// isn't shadowed — matches the /components vs /components/:slug ordering.
+	app.Get("/collections", handlers.ListPublicCollections)
 	app.Get("/collections/:id", middleware.OptionalAuth, handlers.GetCollection)
 
 	// Follows (Phase 5) — feeds the notification hooks in AddVersion/AutoDeploy/webhook
