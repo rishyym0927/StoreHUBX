@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,9 +24,24 @@ func ListNotifications(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Pagination
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "50"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	skip := (page - 1) * limit
+
 	col := db.Client.Database("storehub").Collection("notifications")
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}).SetLimit(50)
-	cursor, err := col.Find(ctx, bson.M{"userId": uid}, opts)
+	filter := bson.M{"userId": uid}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+		SetSkip(int64(skip)).
+		SetLimit(int64(limit))
+	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
 		return utils.Error(c, 500, "database error")
 	}
@@ -36,11 +52,19 @@ func ListNotifications(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to decode notifications")
 	}
 
+	total, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		total = int64(len(notifications)) // fallback
+	}
+
 	unread, _ := col.CountDocuments(ctx, bson.M{"userId": uid, "read": false})
 
 	return utils.Success(c, fiber.Map{
 		"notifications": notifications,
 		"unreadCount":   unread,
+		"page":          page,
+		"limit":         limit,
+		"total":         total,
 	})
 }
 
