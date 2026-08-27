@@ -54,12 +54,14 @@ function FeatureStat({
   body,
   value,
   label,
+  loading,
 }: {
   index: number;
   title: string;
   body: string;
   value: number;
   label: string;
+  loading: boolean;
 }) {
   return (
     <div className="p-8 space-y-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
@@ -69,7 +71,14 @@ function FeatureStat({
       <h3 className="text-2xl font-bold uppercase tracking-tight">{title}</h3>
       <p className="font-mono text-sm text-black/70 dark:text-white/70">{body}</p>
       <div className="pt-4 border-t-2 border-black dark:border-white">
-        <span className="text-4xl font-black">{value}</span>
+        {loading ? (
+          <span
+            className="inline-block h-9 w-16 align-middle skeleton-shimmer"
+            aria-hidden="true"
+          />
+        ) : (
+          <span className="text-4xl font-black">{value}</span>
+        )}
         <span className="font-mono text-xs ml-2 text-black/60 dark:text-white/60">{label}</span>
       </div>
     </div>
@@ -264,6 +273,7 @@ export default function Home() {
             body={feature.body}
             value={statValues[i]}
             label={feature.label}
+            loading={loadingComps}
           />
         ))}
       </section>
