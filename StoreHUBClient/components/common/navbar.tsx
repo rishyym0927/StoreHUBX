@@ -6,7 +6,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "./notification-bell";
 import { useAuth } from "@/lib/store";
 import { GITHUB_LOGIN_URL } from "@/lib/api";
-import { LogOut } from "lucide-react";
+import { LogOut, LayoutGrid, FolderOpen, Plus } from "lucide-react";
 
 export function Navbar() {
   const { user, token, clear } = useAuth();
@@ -27,26 +27,32 @@ export function Navbar() {
           {/* Browse Components */}
           <Link
             href="/components"
-            className="brutal-scale text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5"
+            className="brutal-scale flex items-center gap-1.5 text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-2 sm:px-3 py-1.5"
+            title="Browse"
           >
-            Browse
+            <LayoutGrid className="w-3.5 h-3.5 sm:hidden" />
+            <span className="hidden sm:inline">Browse</span>
           </Link>
 
           {/* Browse Collections */}
           <Link
             href="/collections"
-            className="brutal-scale text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5"
+            className="brutal-scale flex items-center gap-1.5 text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-2 sm:px-3 py-1.5"
+            title="Collections"
           >
-            Collections
+            <FolderOpen className="w-3.5 h-3.5 sm:hidden" />
+            <span className="hidden sm:inline">Collections</span>
           </Link>
 
           {/* New Component (Authenticated Only) */}
           {token && (
             <Link
               href="/components/new"
-              className="brutal-scale text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-3 py-1.5 bg-white text-black dark:bg-black dark:text-white"
+              className="brutal-scale flex items-center gap-1.5 text-xs sm:text-sm font-mono border-2 border-black dark:border-white px-2 sm:px-3 py-1.5 bg-white text-black dark:bg-black dark:text-white"
+              title="New Component"
             >
-              + New
+              <Plus className="w-3.5 h-3.5 sm:hidden" />
+              <span className="hidden sm:inline">+ New</span>
             </Link>
           )}
 
@@ -82,7 +88,7 @@ export function Navbar() {
                       {user.username?.[0]?.toUpperCase() || user.name?.[0]?.toUpperCase() || 'U'}
                     </Avatar.Fallback>
                   </Avatar.Root>
-                  <span className="hidden sm:inline text-xs font-mono">
+                  <span className="hidden sm:inline text-xs font-mono max-w-[96px] truncate">
                     {user.username || user.name?.split(' ')[0] || 'Profile'}
                   </span>
                 </Link>
