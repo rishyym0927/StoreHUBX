@@ -168,6 +168,8 @@ export function VersionBuilds({ slug, version, ownerId, collaborators }: Version
               {/* Build Header - Clickable */}
               <button
                 onClick={() => toggleBuildExpansion(build.id)}
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? "Collapse" : "Expand"} build details`}
                 className="w-full p-3 text-left hover:opacity-80 transition-opacity"
               >
                 <div className="flex items-center justify-between">
