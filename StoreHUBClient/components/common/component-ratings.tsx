@@ -5,11 +5,14 @@ import { useAuth } from "@/lib/store";
 import { ratingApi } from "@/lib/api";
 import { RatingStars } from "@/components/common/rating-stars";
 import { EmptyState } from "@/components/common/empty-state";
+import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import type { Rating } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { Star } from "lucide-react";
+
+const RATINGS_PER_PAGE = 10;
 
 interface RatingsProps {
   slug: string;
@@ -26,29 +29,45 @@ export function ComponentRatings({ slug }: RatingsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [score, setScore] = useState(0);
   const [review, setReview] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const fetchRatings = useCallback(async () => {
-    try {
-      const data = await ratingApi.list(slug, token || undefined);
-      setRatings(data.ratings || []);
-      setAverageRating(data.averageRating || 0);
-      setRatingCount(data.ratingCount || 0);
-      const mine = data.ratings?.find((r) => r.userId === user?.providerId);
-      if (mine) {
-        setScore(mine.score);
-        setReview(mine.review ?? "");
+  const fetchRatings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setIsLoading(true);
+      try {
+        const data = await ratingApi.list(
+          slug,
+          { page, limit: RATINGS_PER_PAGE },
+          token || undefined
+        );
+        setRatings(data.ratings || []);
+        setAverageRating(data.averageRating || 0);
+        setRatingCount(data.ratingCount || 0);
+        setTotal(data.total || 0);
+        const mine = data.ratings?.find((r) => r.userId === user?.providerId);
+        if (mine) {
+          setScore(mine.score);
+          setReview(mine.review ?? "");
+        }
+      } catch (error) {
+        console.error("Failed to load ratings:", error);
+        showToast("Failed to load reviews.", "error");
+      } finally {
+        if (!opts?.silent) setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to load ratings:", error);
-      showToast("Failed to load reviews.", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [slug, token, user?.providerId, showToast]);
+    },
+    [slug, token, page, user?.providerId, showToast]
+  );
 
   useEffect(() => {
     fetchRatings();
   }, [fetchRatings]);
+
+  // A new slug means a different component's ratings — start back on page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +93,19 @@ export function ComponentRatings({ slug }: RatingsProps) {
     };
     const nextRatings = [optimisticRating, ...ratings.filter((r) => r.userId !== user.providerId)];
     const nextCount = hadOwnRating ? ratingCount : ratingCount + 1;
-    const nextAverage = nextRatings.reduce((sum, r) => sum + r.score, 0) / nextRatings.length;
+    // ratings only ever holds the current page, so the average must be
+    // derived from the server-known totals (averageRating/ratingCount), not
+    // recomputed from this page slice — otherwise it transiently jumps to
+    // whatever this page's scores happen to average, which can visibly move
+    // in the wrong direction right after submitting. When updating an
+    // existing rating, back out its previous score first.
+    const previousOwnScore = hadOwnRating
+      ? ratings.find((r) => r.userId === user.providerId)?.score
+      : undefined;
+    const nextAverage =
+      hadOwnRating && previousOwnScore !== undefined
+        ? (averageRating * ratingCount - previousOwnScore + score) / ratingCount
+        : (averageRating * ratingCount + score) / nextCount;
 
     setRatings(nextRatings);
     setRatingCount(nextCount);
@@ -82,18 +113,14 @@ export function ComponentRatings({ slug }: RatingsProps) {
     setIsSubmitting(true);
 
     try {
-      const saved = await ratingApi.upsert(slug, { score, review }, token);
-      // Merge the saved rating locally instead of refetching — a refetch
-      // would re-derive `score`/`review` from the server list and could
-      // clobber an edit the user started while this request was in flight.
-      setRatings((prev) => {
-        const merged = [saved, ...prev.filter((r) => r.userId !== saved.userId)];
-        setRatingCount(merged.length);
-        setAverageRating(
-          merged.reduce((sum, r) => sum + r.score, 0) / merged.length
-        );
-        return merged;
-      });
+      await ratingApi.upsert(slug, { score, review }, token);
+      // With pagination, `ratings` only ever holds the current page, so
+      // ratingCount/averageRating/total can no longer be derived from its
+      // length — reconcile from the server instead. This is silent (no
+      // loading flicker) and only overwrites score/review if the server's
+      // current page actually contains this user's rating, so it won't
+      // clobber an edit started while this request was in flight.
+      await fetchRatings({ silent: true });
     } catch (error) {
       console.error("Failed to submit rating:", error);
       setRatings(previousRatings);
@@ -108,30 +135,24 @@ export function ComponentRatings({ slug }: RatingsProps) {
   const handleDelete = async () => {
     if (!token || !user) return;
 
-    // Same optimistic-with-rollback shape as handleSubmit — recompute the
-    // aggregates locally rather than refetching, for the reason above.
+    // Optimistically drop the row from view; aggregates (ratingCount/
+    // averageRating/total) can't be correctly recomputed from just the
+    // current page under pagination, so they're reconciled from the server
+    // on success instead of being derived locally.
     const previousRatings = ratings;
-    const previousAverage = averageRating;
-    const previousCount = ratingCount;
-
     const remaining = ratings.filter((r) => r.userId !== user.providerId);
     setRatings(remaining);
-    setRatingCount(remaining.length);
-    setAverageRating(
-      remaining.length ? remaining.reduce((sum, r) => sum + r.score, 0) / remaining.length : 0
-    );
     setScore(0);
     setReview("");
     setIsSubmitting(true);
 
     try {
       await ratingApi.delete(slug, token);
+      await fetchRatings({ silent: true });
       showToast("Your rating was removed.", "success");
     } catch (error) {
       console.error("Failed to delete rating:", error);
       setRatings(previousRatings);
-      setAverageRating(previousAverage);
-      setRatingCount(previousCount);
       showToast("Failed to remove rating. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
@@ -225,6 +246,14 @@ export function ComponentRatings({ slug }: RatingsProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {!isLoading && total > RATINGS_PER_PAGE && (
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / RATINGS_PER_PAGE)}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );

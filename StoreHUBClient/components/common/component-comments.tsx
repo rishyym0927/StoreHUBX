@@ -4,12 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/store";
 import { commentApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
+import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import type { Comment } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { MessageSquare } from "lucide-react";
+
+const COMMENTS_PER_PAGE = 10;
 
 interface CommentsProps {
   slug: string;
@@ -23,22 +26,35 @@ export function ComponentComments({ slug }: CommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const fetchComments = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const data = await commentApi.list(slug, token || undefined);
-      setComments(data || []);
+      const data = await commentApi.list(
+        slug,
+        { page, limit: COMMENTS_PER_PAGE },
+        token || undefined
+      );
+      setComments(data.comments || []);
+      setTotal(data.total || 0);
     } catch (error) {
       console.error("Failed to load comments:", error);
       showToast("Failed to load comments.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [slug, token, showToast]);
+  }, [slug, token, page, showToast]);
 
   useEffect(() => {
     fetchComments();
   }, [fetchComments]);
+
+  // A new slug means a different component's comment thread — start back on page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +64,7 @@ export function ComponentComments({ slug }: CommentsProps) {
     try {
       const added = await commentApi.create(slug, newComment, token);
       setComments([added, ...comments]);
+      setTotal((t) => t + 1);
       setNewComment("");
     } catch (error) {
       console.error("Failed to post comment:", error);
@@ -62,6 +79,7 @@ export function ComponentComments({ slug }: CommentsProps) {
     try {
       await commentApi.delete(slug, commentId, token);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setTotal((t) => Math.max(0, t - 1));
     } catch (error) {
       console.error("Failed to delete comment:", error);
       showToast("Failed to delete comment. Please try again.", "error");
@@ -71,7 +89,7 @@ export function ComponentComments({ slug }: CommentsProps) {
   return (
     <div className="mt-12 border-t-4 border-black dark:border-white pt-8">
       <h2 className="text-2xl font-black uppercase tracking-tight mb-8">
-        Discussions ({comments.length})
+        Discussions ({total})
       </h2>
 
       {/* Post Box */}
@@ -116,6 +134,14 @@ export function ComponentComments({ slug }: CommentsProps) {
             />
           ))}
         </div>
+      )}
+
+      {!isLoading && total > COMMENTS_PER_PAGE && (
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / COMMENTS_PER_PAGE)}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );

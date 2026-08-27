@@ -10,6 +10,7 @@ import type {
   VersionCreateRequest,
   VersionCreateResponse,
   Comment,
+  CommentsListResponse,
   RatingsListResponse,
   RatingUpsertRequest,
   RatingUpsertResponse,
@@ -318,14 +319,19 @@ export const componentApi = {
 
 export const commentApi = {
   /**
-   * List all comments for a component
+   * List comments for a component, paginated (defaults: page=1, limit=10)
    */
-  async list(slug: string, authToken?: string) {
-    const response = await apiFetch<{ comments: Comment[] }>(
-      `/components/${slug}/comments`,
+  async list(
+    slug: string,
+    params?: { page?: number; limit?: number },
+    authToken?: string
+  ) {
+    const query = buildQueryString(params || {});
+    const response = await apiFetch<CommentsListResponse>(
+      `/components/${slug}/comments${query}`,
       { authToken }
     );
-    return response.comments;
+    return response;
   },
 
   /**
@@ -364,11 +370,16 @@ export const commentApi = {
 
 export const ratingApi = {
   /**
-   * List all ratings for a component
+   * List ratings for a component, paginated (defaults: page=1, limit=10)
    */
-  async list(slug: string, authToken?: string) {
+  async list(
+    slug: string,
+    params?: { page?: number; limit?: number },
+    authToken?: string
+  ) {
+    const query = buildQueryString(params || {});
     const response = await apiFetch<RatingsListResponse>(
-      `/components/${slug}/ratings`,
+      `/components/${slug}/ratings${query}`,
       { authToken }
     );
     return response;

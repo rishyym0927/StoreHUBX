@@ -329,9 +329,20 @@ export interface BuildStatusResponse {
 }
 
 export interface RatingsListResponse {
+  page: number;
+  limit: number;
+  total: number;
   ratings: Rating[];
   averageRating: number;
   ratingCount: number;
+}
+
+/** Response for GET /components/:slug/comments — paginated, newest first. */
+export interface CommentsListResponse {
+  page: number;
+  limit: number;
+  total: number;
+  comments: Comment[];
 }
 
 export interface RatingUpsertRequest {
