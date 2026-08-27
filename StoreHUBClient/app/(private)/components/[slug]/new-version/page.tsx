@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 
 import { ProtectedRoute } from "@/components/common/protected-route";
 import { OwnershipGuard } from "@/components/common/ownership-guard";
@@ -115,7 +116,11 @@ export default function NewVersion({ params }: { params: Promise<{ slug: string 
               )}
               {!component?.repoLink && (
                 <p className="text-xs font-mono text-yellow-600 dark:text-yellow-400 mt-2 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> No repository linked. Consider linking a GitHub repo for automated builds.
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> No repository linked.{" "}
+                  <Link href={`/components/${slug}/import`} className="underline hover:no-underline font-bold">
+                    Link a GitHub repo
+                  </Link>{" "}
+                  for automated builds.
                 </p>
               )}
             </div>
