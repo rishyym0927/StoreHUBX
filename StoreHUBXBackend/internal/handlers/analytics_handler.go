@@ -9,6 +9,7 @@ import (
 	"github.com/rishyym0927/storehubx/internal/models"
 	"github.com/rishyym0927/storehubx/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type componentAnalytics struct {
@@ -47,11 +48,48 @@ func GetOwnerAnalytics(c *fiber.Ctx) error {
 
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
 
+	componentIDs := make([]primitive.ObjectID, 0, len(components))
+	for _, comp := range components {
+		componentIDs = append(componentIDs, comp.ID)
+	}
+
+	commentCounts := make(map[primitive.ObjectID]int64, len(components))
+	if len(componentIDs) > 0 {
+		pipeline := bson.A{
+			bson.M{"$match": bson.M{
+				"componentId": bson.M{"$in": componentIDs},
+				"type":        models.InteractionComment,
+			}},
+			bson.M{"$group": bson.M{
+				"_id":   "$componentId",
+				"count": bson.M{"$sum": 1},
+			}},
+		}
+
+		aggCursor, err := interactionCol.Aggregate(ctx, pipeline)
+		if err != nil {
+			return utils.Error(c, 500, "failed to aggregate comment counts")
+		}
+		defer aggCursor.Close(ctx)
+
+		var aggResults []struct {
+			ID    primitive.ObjectID `bson:"_id"`
+			Count int64              `bson:"count"`
+		}
+		if err := aggCursor.All(ctx, &aggResults); err != nil {
+			return utils.Error(c, 500, "failed to decode comment counts")
+		}
+
+		for _, r := range aggResults {
+			commentCounts[r.ID] = r.Count
+		}
+	}
+
 	results := make([]componentAnalytics, 0, len(components))
 	totalViews, totalLikes, totalComments := 0, 0, int64(0)
 
 	for _, comp := range components {
-		commentCount, _ := interactionCol.CountDocuments(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionComment})
+		commentCount := commentCounts[comp.ID]
 
 		results = append(results, componentAnalytics{
 			ID:            comp.ID.Hex(),
