@@ -635,6 +635,19 @@ export const previewApi = {
   getPreviewUrl(slug: string, version: string): string {
     return `${API_BASE}/preview/${slug}/${version}`;
   },
+
+  /**
+   * Get a short-lived signed token to append to the preview URL as
+   * `?token=...` so a private-component owner/collaborator can view the
+   * preview iframe, which can't carry an Authorization header (requires auth)
+   */
+  async getPreviewToken(slug: string, version: string, authToken: string) {
+    const response = await apiFetch<{ token: string; expiresIn: number }>(
+      `/api/components/${slug}/versions/${version}/preview-token`,
+      { authToken }
+    );
+    return response;
+  },
 };
 
 // ========================================

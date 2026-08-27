@@ -1,12 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Tabs } from "@/components/common/tabs";
 import { PreviewIframe } from "@/components/common/preview-iframe";
 import { Markdown } from "@/components/common/markdown";
 import { VersionBuilds } from "@/components/common/version-builds";
 import { previewApi } from "@/lib/api";
+import { useAuth } from "@/lib/store";
 import { formatDate } from "@/lib/api-utils";
+
+// Renders the Preview tab for a version. Anonymous viewers, and any
+// logged-in viewer who isn't the owner/collaborator (the common case for a
+// PUBLIC component — the backend would reject their token request with
+// 403/404 anyway), get the plain unsigned preview URL exactly as before, no
+// extra request, no added latency, no spinner flash. Only an owner/
+// collaborator fetches a short-lived signed token first, since they're the
+// only ones who need it to pass identity through the iframe src (which
+// can't carry an Authorization header) for a private component's preview.
+// If the token fetch still fails (e.g. a transient error), fall back to the
+// plain unsigned URL — worst case it 404s the same way it does today.
+function VersionPreviewTab({
+  slug,
+  version,
+  ownerId,
+  collaborators,
+}: {
+  slug: string;
+  version: string;
+  ownerId?: string;
+  collaborators?: string[];
+}) {
+  const { token: authToken, user } = useAuth();
+  const baseUrl = previewApi.getPreviewUrl(slug, version);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  // Mirrors the backend's own check (owner or collaborator) — see
+  // version-builds.tsx for the same ownerId/providerId comparison pattern.
+  const isOwner = !!(
+    user &&
+    ownerId &&
+    (user.providerId === ownerId || collaborators?.includes(user.providerId))
+  );
+  const shouldFetchToken = !!authToken && isOwner;
+  const [isLoadingToken, setIsLoadingToken] = useState(shouldFetchToken);
+
+  useEffect(() => {
+    if (!shouldFetchToken) {
+      setSignedUrl(null);
+      setIsLoadingToken(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingToken(true);
+    previewApi
+      .getPreviewToken(slug, version, authToken as string)
+      .then(({ token }) => {
+        if (!cancelled) setSignedUrl(`${baseUrl}?token=${encodeURIComponent(token)}`);
+      })
+      .catch(() => {
+        // Transient error — fall back to the plain URL rather than
+        // blocking the preview entirely.
+        if (!cancelled) setSignedUrl(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingToken(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, version, authToken, shouldFetchToken, baseUrl]);
+
+  if (isLoadingToken) {
+    return (
+      <div className="border-2 border-black dark:border-white p-8 text-center bg-black/5 dark:bg-white/5">
+        <Loader2 className="w-6 h-6 mb-3 mx-auto animate-spin" />
+        <p className="font-mono text-sm text-black/60 dark:text-white/60">
+          Preparing preview...
+        </p>
+      </div>
+    );
+  }
+
+  return <PreviewIframe url={signedUrl || baseUrl} />;
+}
 
 export type VersionDoc = {
   version: string;
@@ -158,7 +237,14 @@ export function VersionsList({
                   if (active === "readme") return <Markdown content={v.readme} />;
                   if (active === "usage") return <Markdown content={v.usage} />;
                   if (active === "preview") {
-                    return <PreviewIframe url={previewApi.getPreviewUrl(slug, v.version)} />;
+                    return (
+                      <VersionPreviewTab
+                        slug={slug}
+                        version={v.version}
+                        ownerId={ownerId}
+                        collaborators={collaborators}
+                      />
+                    );
                   }
                   if (active === "code") {
                     return (
