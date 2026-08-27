@@ -24,6 +24,7 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
   const [hasNewCommit, setHasNewCommit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [changelog, setChangelog] = useState("");
 
   // Check if component is linked to a repo
   const isLinked = component.repoLink && component.repoLink.owner && component.repoLink.repo;
@@ -87,6 +88,15 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
     }
   }, [token, isLinked, isOwner, checkForNewCommits]);
 
+  // Keep the editable changelog field pre-filled with the auto-generated
+  // default whenever a newly-detected commit becomes the pending deploy
+  // target, without clobbering in-progress edits on unrelated re-renders.
+  useEffect(() => {
+    if (hasNewCommit && latestCommit) {
+      setChangelog(`Auto-deployed from commit ${latestCommit.substring(0, 7)}`);
+    }
+  }, [hasNewCommit, latestCommit]);
+
   // Deploy new commit
   const handleDeploy = async () => {
     if (!latestCommit || !token) return;
@@ -99,7 +109,8 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
       // Auto-generate version number (backend will increment)
       const payload: AutoDeployRequest = {
         commitSha: latestCommit,
-        changelog: `Auto-deployed from commit ${latestCommit.substring(0, 7)}`,
+        changelog:
+          changelog.trim() || `Auto-deployed from commit ${latestCommit.substring(0, 7)}`,
       };
 
       await versionApi.autoDeploy(component.slug, payload, token);
@@ -167,6 +178,23 @@ export function AutoDeploy({ component, versions, onDeploySuccess }: AutoDeployP
                 <Zap className="w-4 h-4 shrink-0" /> New commit detected:{" "}
                 <span className="font-mono">{latestCommit.substring(0, 7)}</span>
               </p>
+              <div className="mt-2 space-y-1">
+                <label
+                  htmlFor="auto-deploy-changelog"
+                  className="text-xs font-mono font-bold uppercase tracking-wide text-yellow-800 dark:text-yellow-200"
+                >
+                  Changelog
+                </label>
+                <input
+                  id="auto-deploy-changelog"
+                  type="text"
+                  value={changelog}
+                  onChange={(e) => setChangelog(e.target.value)}
+                  disabled={deploying}
+                  placeholder={`Auto-deployed from commit ${latestCommit.substring(0, 7)}`}
+                  className="w-full border-2 border-black dark:border-white p-2 bg-transparent font-mono text-sm placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none disabled:opacity-50"
+                />
+              </div>
             </div>
           )}
 
