@@ -164,7 +164,9 @@ export function ComponentCard({
                     ? "border-red-700 dark:border-red-400 bg-red-700 dark:bg-red-500 text-white"
                     : "border-black dark:border-white hover:bg-red-700 hover:text-white hover:border-red-700 dark:hover:bg-red-500 dark:hover:border-red-500"
                 }`}
-                title={confirmingDelete ? "Click again to confirm" : "Delete component"}
+                aria-label={confirmingDelete ? "Click again to confirm delete" : "Delete component"}
+                aria-live="polite"
+                aria-atomic="true"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {confirmingDelete && "Confirm?"}
