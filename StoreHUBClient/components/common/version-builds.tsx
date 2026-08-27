@@ -5,7 +5,7 @@ import { useBuilds } from "@/hooks/use-api";
 import { formatRelativeTime } from "@/lib/api-utils";
 import { buildApi } from "@/lib/api";
 import { useAuth } from "@/lib/store";
-import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, CheckCircle2, XCircle, Info, ChevronDown, ChevronRight, ExternalLink, type LucideIcon } from "lucide-react";
 
 interface VersionBuildsProps {
   slug: string;
@@ -156,9 +156,21 @@ export function VersionBuilds({ slug, version, ownerId, collaborators }: Version
       )}
       
       <div className="space-y-3">
-        {builds.map((build) => {
+        {builds.map((build, index) => {
           const statusConfig = getStatusConfig(build.status);
           const isExpanded = expandedBuildId === build.id;
+          // `builds` is sorted newest-first by the backend, so the build to
+          // diff against is the next one in the array, not the previous.
+          const previousBuild = builds[index + 1];
+          const canCompare = !!(
+            build.repo?.commit &&
+            previousBuild?.repo?.commit &&
+            build.repo.commit !== previousBuild.repo.commit &&
+            build.repo.owner &&
+            build.repo.repo &&
+            previousBuild.repo.owner === build.repo.owner &&
+            previousBuild.repo.repo === build.repo.repo
+          );
 
           return (
             <div
@@ -209,7 +221,20 @@ export function VersionBuilds({ slug, version, ownerId, collaborators }: Version
                         {build.repo.commit && (
                           <div className="border border-black dark:border-white p-2">
                             <p className="font-mono text-black/60 dark:text-white/60 mb-1">Commit</p>
-                            <p className="font-mono font-bold">{build.repo.commit.slice(0, 7)}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-mono font-bold">{build.repo.commit.slice(0, 7)}</p>
+                              {canCompare && (
+                                <a
+                                  href={`https://github.com/${build.repo.owner}/${build.repo.repo}/compare/${previousBuild.repo.commit}...${build.repo.commit}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 font-mono text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:underline"
+                                  title={`Compare with previous build (${previousBuild.repo.commit!.slice(0, 7)})`}
+                                >
+                                  Compare <ExternalLink className="w-3 h-3 shrink-0" />
+                                </a>
+                              )}
+                            </div>
                           </div>
                         )}
                         {build.repo.path && (
