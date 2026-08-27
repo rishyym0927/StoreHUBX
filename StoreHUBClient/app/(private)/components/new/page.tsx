@@ -29,6 +29,22 @@ type Mode = "manual" | "github";
 // Either way the field stays fully editable.
 type FieldSource = "manual" | "github" | "ai";
 
+// Shared with onSubmit so blur-time validation and submit-time validation
+// can never drift apart.
+function getNameError(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return "Name is required";
+  if (!isValidComponentName(trimmed)) {
+    return "Use only alphanumeric characters, hyphens, and underscores (2-50 chars)";
+  }
+  return undefined;
+}
+
+function getFrameworksError(value: string): string | undefined {
+  if (parseFrameworks(value).length === 0) return "At least one framework is required";
+  return undefined;
+}
+
 const inputClass =
   "w-full border-2 border-black dark:border-white p-3 bg-transparent font-mono text-sm placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none";
 
@@ -178,16 +194,12 @@ export default function NewComponent() {
     const trimmedName = name.trim();
     const errors: Record<string, string> = {};
 
-    if (!trimmedName) {
-      errors.name = "Name is required";
-    } else if (!isValidComponentName(trimmedName)) {
-      errors.name = "Use only alphanumeric characters, hyphens, and underscores (2-50 chars)";
-    }
+    const nameError = getNameError(name);
+    if (nameError) errors.name = nameError;
 
     const parsedFrameworks = parseFrameworks(frameworks);
-    if (parsedFrameworks.length === 0) {
-      errors.frameworks = "At least one framework is required";
-    }
+    const frameworksError = getFrameworksError(frameworks);
+    if (frameworksError) errors.frameworks = frameworksError;
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -226,6 +238,7 @@ export default function NewComponent() {
       return;
     }
 
+    showToast("Component created.", "success");
     router.push(`/components/${slug}`);
   }
 
@@ -369,6 +382,15 @@ export default function NewComponent() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={(e) => {
+                const nameError = getNameError(e.target.value);
+                setFormErrors((prev) => {
+                  const next = { ...prev };
+                  if (nameError) next.name = nameError;
+                  else delete next.name;
+                  return next;
+                });
+              }}
               placeholder="pricing-card"
               className={`${inputClass} ${formErrors.name ? "border-red-600 dark:border-red-400" : ""}`}
               required
@@ -398,6 +420,15 @@ export default function NewComponent() {
             <input
               value={frameworks}
               onChange={(e) => setFrameworks(e.target.value)}
+              onBlur={(e) => {
+                const frameworksError = getFrameworksError(e.target.value);
+                setFormErrors((prev) => {
+                  const next = { ...prev };
+                  if (frameworksError) next.frameworks = frameworksError;
+                  else delete next.frameworks;
+                  return next;
+                });
+              }}
               placeholder="react, vue, svelte"
               className={`${inputClass} ${formErrors.frameworks ? "border-red-600 dark:border-red-400" : ""}`}
               required
