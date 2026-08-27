@@ -103,7 +103,7 @@ export default async function ComponentDetail({
   return (
     <div className="space-y-8">
       {/* ---- Header: everything you need to identify the component ---- */}
-      <header className="border-2 border-black dark:border-white bg-white dark:bg-black p-6 sm:p-8 space-y-5">
+      <header className="border-2 border-black dark:border-white bg-white dark:bg-black p-5 sm:p-6 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 space-y-3">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-3 flex-wrap">
@@ -148,7 +148,7 @@ export default async function ComponentDetail({
                 name={ownerProfile.user.username || ownerProfile.user.name}
                 size="sm"
               />
-              <span className="font-bold">
+              <span className="font-bold truncate max-w-[10rem] sm:max-w-[14rem]">
                 {ownerProfile.user.username || ownerProfile.user.name}
               </span>
             </Link>
@@ -191,7 +191,7 @@ export default async function ComponentDetail({
         </div>
 
         <aside className="space-y-6 min-w-0 lg:sticky lg:top-6 lg:self-start">
-          <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-5">
+          <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5 sm:p-6 space-y-5">
             <AddToCollection componentId={comp.id} />
 
             <InstallCommand repoLink={comp.repoLink} />
@@ -232,7 +232,7 @@ export default async function ComponentDetail({
           </div>
 
           {ownerProfile && ownerProfile.components.length > 0 && (
-            <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5">
+            <div className="border-2 border-black dark:border-white bg-white dark:bg-black p-5 sm:p-6">
               <UserProfileCard
                 ownerId={comp.ownerId}
                 ownerName={ownerProfile.user.name}
