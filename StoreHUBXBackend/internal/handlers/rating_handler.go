@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -174,9 +175,23 @@ func ListRatings(c *fiber.Ctx) error {
 		}
 	}
 
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	skip := (page - 1) * limit
+
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := interactionCol.Find(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionRating}, opts)
+	filter := bson.M{"componentId": comp.ID, "type": models.InteractionRating}
+	opts := options.Find().
+		SetSkip(int64(skip)).
+		SetLimit(int64(limit)).
+		SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	cursor, err := interactionCol.Find(ctx, filter, opts)
 	if err != nil {
 		return utils.Error(c, 500, "database error")
 	}
@@ -185,6 +200,11 @@ func ListRatings(c *fiber.Ctx) error {
 	interactions := make([]models.Interaction, 0)
 	if err := cursor.All(ctx, &interactions); err != nil {
 		return utils.Error(c, 500, "failed to decode ratings")
+	}
+
+	total, err := interactionCol.CountDocuments(ctx, filter)
+	if err != nil {
+		total = int64(len(interactions)) // fallback
 	}
 
 	ratings := make([]ratingView, 0, len(interactions))
@@ -196,6 +216,9 @@ func ListRatings(c *fiber.Ctx) error {
 		"ratings":       ratings,
 		"averageRating": comp.AverageRating,
 		"ratingCount":   comp.RatingCount,
+		"page":          page,
+		"limit":         limit,
+		"total":         total,
 	})
 }
 

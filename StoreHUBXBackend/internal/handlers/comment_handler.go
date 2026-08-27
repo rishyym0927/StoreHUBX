@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -59,9 +60,23 @@ func GetComments(c *fiber.Ctx) error {
 		}
 	}
 
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	skip := (page - 1) * limit
+
 	interactionCol := db.Client.Database("storehub").Collection("interactions")
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
-	cursor, err := interactionCol.Find(ctx, bson.M{"componentId": comp.ID, "type": models.InteractionComment}, opts)
+	filter := bson.M{"componentId": comp.ID, "type": models.InteractionComment}
+	opts := options.Find().
+		SetSkip(int64(skip)).
+		SetLimit(int64(limit)).
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}) // newest first
+	cursor, err := interactionCol.Find(ctx, filter, opts)
 	if err != nil {
 		return utils.Error(c, 500, "database error")
 	}
@@ -72,6 +87,11 @@ func GetComments(c *fiber.Ctx) error {
 		return utils.Error(c, 500, "failed to decode comments")
 	}
 
+	total, err := interactionCol.CountDocuments(ctx, filter)
+	if err != nil {
+		total = int64(len(interactions)) // fallback
+	}
+
 	comments := make([]commentView, 0, len(interactions))
 	for _, i := range interactions {
 		comments = append(comments, toCommentView(i))
@@ -79,6 +99,9 @@ func GetComments(c *fiber.Ctx) error {
 
 	return utils.Success(c, fiber.Map{
 		"comments": comments,
+		"page":     page,
+		"limit":    limit,
+		"total":    total,
 	})
 }
 
