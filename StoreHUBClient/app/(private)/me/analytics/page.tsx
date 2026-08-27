@@ -65,17 +65,31 @@ export default function AnalyticsPage() {
 
           {data && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatTile label="Components" value={data.totals.componentCount} />
-                <StatTile label="Total Views" value={data.totals.viewCount} />
-                <StatTile label="Total Likes" value={data.totals.likeCount} />
-                <StatTile label="Total Comments" value={data.totals.commentCount} />
-              </div>
-
               {data.components.length === 0 ? (
-                <EmptyState icon={Package} title="No Components Yet" description="You don't own any components yet." />
+                <EmptyState
+                  icon={Package}
+                  title="No Components Yet"
+                  description="Start building your component library by sharing your first UI piece with the community. Let's make something amazing."
+                  size="lg"
+                  action={
+                    <Link
+                      href="/components/new"
+                      className="inline-flex items-center justify-center gap-2 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-8 py-4 text-sm font-mono font-bold transition-all hover:shadow-[8px_8px_0px_0px_#1B1712] dark:hover:shadow-[8px_8px_0px_0px_#EFE8D9] hover:-translate-y-1 active:translate-y-0 active:shadow-none"
+                    >
+                      CREATE YOUR FIRST COMPONENT →
+                    </Link>
+                  }
+                />
               ) : (
-                <div className="space-y-4">
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <StatTile label="Components" value={data.totals.componentCount} />
+                    <StatTile label="Total Views" value={data.totals.viewCount} />
+                    <StatTile label="Total Likes" value={data.totals.likeCount} />
+                    <StatTile label="Total Comments" value={data.totals.commentCount} />
+                  </div>
+
+                  <div className="space-y-4">
                   {data.components.map((comp) => (
                     <div
                       key={comp.id}
@@ -110,7 +124,8 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                </>
               )}
             </>
           )}
