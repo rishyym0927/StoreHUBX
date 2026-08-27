@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, FolderOpen, Lock, Plus } from "lucide-react";
 import { useAuth } from "@/lib/store";
-import { collectionApi } from "@/lib/api";
+import { ApiError, collectionApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
 import { useToast } from "@/components/common/toast";
 import { formatDate } from "@/lib/api-utils";
@@ -56,7 +56,7 @@ export function CollectionList({ ownerId, canCreate = false }: CollectionListPro
       showToast("Collection created.", "success");
     } catch (err) {
       console.error("Failed to create collection:", err);
-      showToast("Failed to create collection. Please try again.", "error");
+      showToast(err instanceof ApiError ? err.message : "Failed to create collection. Please try again.", "error");
     } finally {
       setCreating(false);
     }

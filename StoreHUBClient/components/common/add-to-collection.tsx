@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, FolderPlus, Plus } from "lucide-react";
 import { useAuth } from "@/lib/store";
-import { collectionApi } from "@/lib/api";
+import { ApiError, collectionApi } from "@/lib/api";
 import { useToast } from "@/components/common/toast";
 import type { Collection } from "@/types";
 
@@ -34,7 +34,7 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
       setCollections(await collectionApi.listForUser(ownerId, token));
     } catch (error) {
       console.error("Failed to load collections:", error);
-      showToast("Failed to load your collections.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to load your collections.", "error");
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
       showToast(isIn ? "Removed from collection." : "Added to collection.", "success");
     } catch (error) {
       console.error("Failed to update collection:", error);
-      showToast("Failed to update collection. Please try again.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to update collection. Please try again.", "error");
     } finally {
       setPendingId(null);
     }
@@ -97,7 +97,7 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
       showToast(`Added to "${updated.name}".`, "success");
     } catch (error) {
       console.error("Failed to create collection:", error);
-      showToast("Failed to create collection. Please try again.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to create collection. Please try again.", "error");
     } finally {
       setCreating(false);
     }

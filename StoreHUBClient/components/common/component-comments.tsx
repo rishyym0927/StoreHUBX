@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/store";
-import { commentApi } from "@/lib/api";
+import { ApiError, commentApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -41,7 +41,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       setTotal(data.total || 0);
     } catch (error) {
       console.error("Failed to load comments:", error);
-      showToast("Failed to load comments.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to load comments.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +68,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       setNewComment("");
     } catch (error) {
       console.error("Failed to post comment:", error);
-      showToast("Failed to post comment. Please try again.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to post comment. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +82,7 @@ export function ComponentComments({ slug }: CommentsProps) {
       setTotal((t) => Math.max(0, t - 1));
     } catch (error) {
       console.error("Failed to delete comment:", error);
-      showToast("Failed to delete comment. Please try again.", "error");
+      showToast(error instanceof ApiError ? error.message : "Failed to delete comment. Please try again.", "error");
     }
   };
 

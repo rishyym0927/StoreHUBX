@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, BellOff } from "lucide-react";
 import { useAuth } from "@/lib/store";
-import { followApi } from "@/lib/api";
+import { followApi, ApiError } from "@/lib/api";
 import { useToast } from "@/components/common/toast";
 
 interface FollowButtonProps {
@@ -61,7 +61,10 @@ export function FollowButton({ componentId, ownerId, initialFollowedByMe }: Foll
     } catch (error) {
       console.error("Failed to toggle follow:", error);
       setIsFollowing(previous);
-      showToast("Failed to update follow. Please try again.", "error");
+      showToast(
+        error instanceof ApiError ? error.message : "Failed to update follow. Please try again.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }

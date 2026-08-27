@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/store";
-import { componentApi } from "@/lib/api";
+import { componentApi, ApiError } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/common/toast";
 
@@ -55,7 +55,10 @@ export function LikeButton({ slug, initialLikeCount, initialLikedByMe }: LikeBut
       console.error("Failed to toggle like:", error);
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
-      showToast("Failed to update like. Please try again.", "error");
+      showToast(
+        error instanceof ApiError ? error.message : "Failed to update like. Please try again.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }

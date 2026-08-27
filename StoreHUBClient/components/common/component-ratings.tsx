@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/store";
-import { ratingApi } from "@/lib/api";
+import { ratingApi, ApiError } from "@/lib/api";
 import { RatingStars } from "@/components/common/rating-stars";
 import { EmptyState } from "@/components/common/empty-state";
 import { Pagination } from "@/components/common/pagination";
@@ -52,7 +52,7 @@ export function ComponentRatings({ slug }: RatingsProps) {
         }
       } catch (error) {
         console.error("Failed to load ratings:", error);
-        showToast("Failed to load reviews.", "error");
+        showToast(error instanceof ApiError ? error.message : "Failed to load reviews.", "error");
       } finally {
         if (!opts?.silent) setIsLoading(false);
       }
@@ -126,7 +126,10 @@ export function ComponentRatings({ slug }: RatingsProps) {
       setRatings(previousRatings);
       setAverageRating(previousAverage);
       setRatingCount(previousCount);
-      showToast("Failed to submit rating. Please try again.", "error");
+      showToast(
+        error instanceof ApiError ? error.message : "Failed to submit rating. Please try again.",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +156,10 @@ export function ComponentRatings({ slug }: RatingsProps) {
     } catch (error) {
       console.error("Failed to delete rating:", error);
       setRatings(previousRatings);
-      showToast("Failed to remove rating. Please try again.", "error");
+      showToast(
+        error instanceof ApiError ? error.message : "Failed to remove rating. Please try again.",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
