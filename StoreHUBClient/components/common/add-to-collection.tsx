@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, FolderPlus, Plus } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { collectionApi } from "@/lib/api";
@@ -21,6 +21,7 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Collections are keyed by providerId — the same value as the JWT's
   // user_id claim and Component.ownerId.
@@ -42,6 +43,27 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
   useEffect(() => {
     if (open) load();
   }, [open, load]);
+
+  // Close on outside click / Escape, so the panel behaves like a menu.
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   if (!token || !user) return null;
 
@@ -82,9 +104,11 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
   };
 
   return (
-    <div className="space-y-3 pb-4 border-b border-black dark:border-white">
+    <div className="space-y-3 pb-4 border-b border-black dark:border-white" ref={containerRef}>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="add-to-collection-panel"
         className="w-full flex items-center justify-center gap-2 border-2 border-black dark:border-white px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider brutal-scale"
       >
         <FolderPlus className="w-4 h-4" />
@@ -92,7 +116,7 @@ export function AddToCollection({ componentId }: AddToCollectionProps) {
       </button>
 
       {open && (
-        <div className="space-y-3">
+        <div id="add-to-collection-panel" className="space-y-3">
           {loading ? (
             <p className="text-xs font-mono text-black/60 dark:text-white/60">Loading…</p>
           ) : collections.length === 0 ? (
