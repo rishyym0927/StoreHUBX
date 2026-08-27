@@ -112,25 +112,20 @@ export default function UserProfile() {
             </div>
 
             {/* Stats Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <StatCard 
-                label="Components" 
-                value={profile.stats?.totalComponents ?? profile.components.length} 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <StatCard
+                label="Components"
+                value={profile.stats?.totalComponents ?? profile.components.length}
               />
-              <StatCard 
-                label="Joined" 
-                value={profile.user.createdAt 
-                  ? new Date(profile.user.createdAt).toLocaleDateString("en-US", { 
-                      month: "short", 
-                      year: "numeric" 
+              <StatCard
+                label="Joined"
+                value={profile.user.createdAt
+                  ? new Date(profile.user.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      year: "numeric"
                     })
                   : "N/A"
-                } 
-              />
-              <StatCard 
-                label="Status" 
-                value="active"
-                className="capitalize"
+                }
               />
             </div>
 

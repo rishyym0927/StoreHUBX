@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FolderOpen, Lock, Plus } from "lucide-react";
+import { AlertTriangle, FolderOpen, Lock, Plus } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { collectionApi } from "@/lib/api";
 import { EmptyState } from "@/components/common/empty-state";
@@ -87,7 +87,20 @@ export function CollectionList({ ownerId, canCreate = false }: CollectionListPro
       {loading ? (
         <p className="font-mono text-sm animate-pulse">Loading collections…</p>
       ) : error ? (
-        <p className="font-mono text-sm text-red-700 dark:text-red-400">{error}</p>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Failed To Load Collections"
+          description={error}
+          variant="error"
+          action={
+            <button
+              onClick={load}
+              className="border-2 border-red-600 dark:border-red-400 px-4 py-2 text-xs font-mono font-bold transition-colors hover:bg-red-600 hover:text-white dark:hover:bg-red-400 dark:hover:text-black"
+            >
+              Try Again
+            </button>
+          }
+        />
       ) : collections.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
