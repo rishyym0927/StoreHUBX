@@ -21,6 +21,7 @@ export function NotificationBell() {
   const { data, patch } = useNotifications();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
@@ -32,10 +33,14 @@ export function NotificationBell() {
     const onPointerDown = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
 
     document.addEventListener("mousedown", onPointerDown);
@@ -68,6 +73,7 @@ export function NotificationBell() {
     // Rows written before componentSlug existed have no link target.
     if (n.componentSlug) {
       setOpen(false);
+      triggerRef.current?.focus();
       router.push(`/components/${n.componentSlug}`);
     }
   };
@@ -87,6 +93,7 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         aria-expanded={open}
