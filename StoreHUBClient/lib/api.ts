@@ -32,6 +32,7 @@ import type {
   OwnerAnalyticsResponse,
   FollowRequest,
   NotificationsListResponse,
+  NotificationsQueryParams,
   CollectionCreateRequest,
   CollectionCreateResponse,
   CollectionUpdateRequest,
@@ -738,11 +739,13 @@ export const followApi = {
 
 export const notificationApi = {
   /**
-   * List the caller's notifications (newest first, capped at 50) + unread count
+   * List the caller's notifications, paginated (defaults: page=1, limit=50),
+   * newest first, plus unread count
    */
-  async list(authToken: string) {
+  async list(authToken: string, params?: NotificationsQueryParams) {
+    const query = buildQueryString(params || {});
     const response = await apiFetch<NotificationsListResponse>(
-      "/api/notifications",
+      `/api/notifications${query}`,
       { authToken }
     );
     return response;

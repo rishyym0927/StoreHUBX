@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, GitBranch, MessageSquare, Hammer } from "lucide-react";
 import { useAuth } from "@/lib/store";
@@ -157,6 +158,17 @@ export function NotificationBell() {
               })}
             </ul>
           )}
+
+          <Link
+            href="/notifications"
+            onClick={() => {
+              setOpen(false);
+              triggerRef.current?.focus();
+            }}
+            className="block w-full text-center px-4 py-3 text-xs font-mono font-bold uppercase tracking-wider border-t-2 border-black dark:border-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+          >
+            View all
+          </Link>
         </div>
       )}
     </div>

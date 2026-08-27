@@ -431,6 +431,9 @@ export interface FollowRequest {
 export interface NotificationsListResponse {
   notifications: Notification[];
   unreadCount: number;
+  page: number;
+  limit: number;
+  total: number;
 }
 
 // ========================================
@@ -447,6 +450,11 @@ export interface ComponentsQueryParams {
 }
 
 export interface CollectionsQueryParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface NotificationsQueryParams {
   page?: number;
   limit?: number;
 }
