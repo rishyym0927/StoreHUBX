@@ -47,6 +47,7 @@ function MeContent() {
   const itemsPerPage = parseInt(searchParams.get("limit") || "10", 10);
 
   const [githubData, setGithubData] = useState<GithubPublicProfile | null>(null);
+  const [githubStatus, setGithubStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
 
   useEffect(() => {
     async function fetchProfile() {
@@ -63,14 +64,19 @@ function MeContent() {
 
         // Fetch Github specific details if applicable
         if (data.user?.provider === 'github' && data.user?.username) {
+          setGithubStatus("loading");
           try {
             const res = await fetch(`https://api.github.com/users/${data.user.username}`);
             if (res.ok) {
               const ghData = await res.json();
               setGithubData(ghData);
+              setGithubStatus("loaded");
+            } else {
+              setGithubStatus("error");
             }
           } catch (e) {
             console.error("Github profile fetch error:", e);
+            setGithubStatus("error");
           }
         }
       } catch (err) {
@@ -238,13 +244,13 @@ function MeContent() {
                   label="Local Comps" 
                   value={profile.stats?.totalComponents ?? profile.components.length} 
                 />
-                <StatCard 
-                  label="Github Repos" 
-                  value={githubData ? githubData.public_repos : "..."} 
+                <StatCard
+                  label="Github Repos"
+                  value={githubData ? githubData.public_repos : githubStatus === "loading" ? "..." : "—"}
                 />
-                <StatCard 
-                  label="Followers" 
-                  value={githubData ? githubData.followers : "..."} 
+                <StatCard
+                  label="Followers"
+                  value={githubData ? githubData.followers : githubStatus === "loading" ? "..." : "—"}
                 />
                 <StatCard 
                   label="Joined StoreHUBX" 
